@@ -32,8 +32,6 @@ This document outlines all development tasks required to upgrade STXWORX-Degrant
 - [ ] Integrate X (Twitter) API endpoints
 - [ ] Develop NFT minting API
 - [ ] Implement multi-sig transaction APIs
-- [ ] Add KYC/AML integration endpoints
-- [ ] Create monitoring and analytics endpoints
 
 ### 1.4 Security Infrastructure
 - [ ] Setup Redis for session management and caching
@@ -56,7 +54,6 @@ This document outlines all development tasks required to upgrade STXWORX-Degrant
 - [ ] Design chat interface components
 - [ ] Implement real-time messaging with WebSockets
 - [ ] Add end-to-end encryption
-- [ ] Create file sharing functionality
 - [ ] Build message history and search
 - [ ] Implement contact protection features
 - [ ] Add typing indicators and read receipts

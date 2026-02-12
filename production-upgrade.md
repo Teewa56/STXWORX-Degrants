@@ -43,7 +43,6 @@ This document outlines the comprehensive upgrade plan for transitioning STXWORX-
 **Features**:
 - End-to-end encrypted messaging
 - Contact information protection (phone, email hidden)
-- File sharing capabilities
 - Message history with search
 - Auto-deletion of sensitive data
 
