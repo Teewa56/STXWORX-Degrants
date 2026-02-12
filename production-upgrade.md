@@ -51,7 +51,7 @@ This document outlines the comprehensive upgrade plan for transitioning STXWORX-
 - WebSocket-based real-time messaging
 - Encryption: AES-256 for messages
 - Redis for session management
-- PostgreSQL for message metadata
+- Neon PostgreSQL for message metadata
 
 **Privacy Controls**:
 ```typescript
@@ -236,9 +236,9 @@ interface AdminEscrowControl {
 
 ### Database Enhancements
 ```sql
--- New tables for enhanced features
+-- New tables for enhanced features (Neon PostgreSQL)
 CREATE TABLE admin_actions (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   admin_id UUID REFERENCES users(id),
   action_type VARCHAR(50),
   action_data JSONB,
@@ -247,7 +247,7 @@ CREATE TABLE admin_actions (
 );
 
 CREATE TABLE nft_achievements (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id),
   token_id BIGINT,
   achievement_type VARCHAR(20),
@@ -255,7 +255,7 @@ CREATE TABLE nft_achievements (
 );
 
 CREATE TABLE chat_messages (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id),
   sender_id UUID REFERENCES users(id),
   encrypted_content TEXT,
@@ -280,8 +280,13 @@ GET /api/chat/history/:projectId
 POST /api/nft/mint-achievement
 GET /api/leaderboard/:category
 POST /api/x/connect
-GET /api/analytics/platform-metrics
 ```
+
+### Email Service (Postmark)
+- **Transactional Emails**: Project notifications, milestone updates
+- **Template Management**: Professional email templates
+- **Delivery Tracking**: Real-time email status monitoring
+- **Bounce Handling**: Automatic email list management
 
 ---
 
