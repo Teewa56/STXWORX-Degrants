@@ -116,6 +116,8 @@ npm install
 clarinet check
 ```
 
+### Also create a settings directory that contains Mainnet.toml, Testnet.toml, and Devnet.toml files containing your private key
+
 ---
 
 ## Contract Deployment
@@ -176,7 +178,7 @@ callee_filter = false
 
 ### Step 3: Create Deployment Plan
 
-Create `deployments/default.testnet-plan.yaml`:
+clarinet deploymnets generate --testnet --lowcost 
 
 ### Step 4: Validate Contracts
 
@@ -216,7 +218,7 @@ curl -s "https://api.testnet.hiro.so/v2/contracts/interface/ST1PQHQKV0RJXZFY1DGX
 
 ### Step 1: Initialize Multi-Sig (CRITICAL)
 
-**⚠️ Do this IMMEDIATELY after deployment - can only be done ONCE**
+** Do this IMMEDIATELY after deployment - can only be done ONCE**
 
 ```clarity
 ;; Open Clarinet console OR use Hiro Platform
@@ -225,7 +227,7 @@ clarinet console
 ;; Initialize with 5 trusted signers
 (contract-call? .freelance-security initialize-signers 
   (list 
-    'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM  ;; Your address
+    'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM  ;; Founder address
     'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG  ;; Co-founder
     'ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC  ;; Technical lead
     'ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND   ;; Community rep
@@ -257,11 +259,11 @@ clarinet console
 
 **Via Hiro Platform:**
 1. Go to `escrow-multi-token` contract → call `authorize-contract`
-   - Parameter: `ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.freelance-data`
+   - Parameter: contract address and name
 2. Go to `freelance-data` contract → call `authorize-contract`
-   - Parameter: `ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.escrow-multi-token`
+   - Parameter: contract address and name
 3. Go to `achievement-nfts` contract → call `authorize-minter`
-   - Parameter: `ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.freelance-data`
+   - Parameter: contract address and name
 
 ### Step 3: Approve Token Contracts
 
@@ -274,7 +276,6 @@ clarinet console
 
 **Get testnet sBTC address:**
 - Visit: https://docs.sbtc.tech/
-- Or use community testnet sBTC: Check Stacks Discord
 
 ### Step 4: Set Treasury Address (Optional)
 
@@ -315,7 +316,7 @@ clarinet console
 #### Constants
 
 ```clarity
-FEE-PERCENT: u500              ;; 5% platform fee (500/10000)
+FEE-PERCENT: u500              ;; 10% platform fee (1000/10000)
 REFUND-TIMEOUT: u144           ;; 24 hours in blocks
 MAX-MILESTONES: u4             ;; Fixed 4 milestones
 MAX-ESCROW-AMOUNT: u1000000000000  ;; 1M STX maximum
@@ -403,14 +404,14 @@ Client releases payment for completed milestone.
 ```
 
 **Access:** Only client of the project  
-**Fee:** 5% deducted automatically  
+**Fee:** 10% deducted automatically  
 **Example:**
 ```clarity
 ;; Client releases milestone 1 payment
 (contract-call? .escrow-multi-token release-milestone-stx u1 u1)
 ;; If milestone was 10 STX:
-;; - Freelancer receives: 9.5 STX (95%)
-;; - Treasury receives: 0.5 STX (5%)
+;; - Freelancer receives: 9 STX (90%)
+;; - Treasury receives: 1 STX (10%)
 ```
 
 ##### `request-full-refund-stx` / `request-full-refund-sbtc`
@@ -671,7 +672,7 @@ Initialize the 5 multi-sig signers.
   ;; Returns: (ok true)
 ```
 
-**⚠️ Can only be called ONCE immediately after deployment**
+**Can only be called ONCE immediately after deployment**
 
 ##### `create-pause-proposal`
 Propose to pause escrow contract.
@@ -808,7 +809,7 @@ clarinet test
 (contract-call? .freelance-data get-user-profile 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG)
 ;; Should show:
 ;; - completed-projects: u1
-;; - total-earnings: u23750000 (25 STX - 5% fee)
+;; - total-earnings: u23750000 (25 STX - 10% fee)
 
 ;; 6. Test refund scenario
 (contract-call? .escrow-multi-token create-project-stx 
@@ -987,19 +988,19 @@ const satoshisToSbtc = (amount: number) => amount / 100_000_000;
 
 ### Access Control Checklist
 
-- ✅ All admin functions restricted to contract owner
-- ✅ Multi-sig required for critical operations
-- ✅ Contract pause mechanism implemented
-- ✅ Authorization checks on cross-contract calls
-- ✅ Client/freelancer validation (cannot be same)
-- ✅ Token whitelist enforcement
+- All admin functions restricted to contract owner
+- Multi-sig required for critical operations
+- Contract pause mechanism implemented
+- Authorization checks on cross-contract calls
+- Client/freelancer validation (cannot be same)
+- Token whitelist enforcement
 
 ### Best Practices
 
 1. **Never hardcode addresses** in production contracts
 2. **Always use multi-sig** for treasury/admin changes
 3. **Test refund scenarios** thoroughly
-4. **Monitor fee percentages** (5% = u500, not u1000)
+4. **Monitor fee percentages** (u1000)
 5. **Validate all inputs** before state changes
 6. **Use safe math** to prevent overflows
 7. **Emit events** for all state changes
@@ -1037,7 +1038,7 @@ curl -s "https://api.testnet.hiro.so/extended/v1/tx/events?address=ST...&limit=5
 
 ### Upgrading Contracts
 
-**⚠️ Contracts are immutable once deployed**
+**Contracts are immutable once deployed**
 
 To upgrade:
 1. Deploy new version with different name
