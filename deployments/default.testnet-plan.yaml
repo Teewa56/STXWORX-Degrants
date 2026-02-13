@@ -11,28 +11,28 @@ plan:
         - contract-publish:
             contract-name: achievement-nfts
             expected-sender: ST370TTX5XBMW5TKXV5HAPZFBEB1RMDEHEYEQXW90
-            cost: 469422
+            cost: 68880
             path: "contracts\\achievement-nfts.clar"
             anchor-block-only: true
             clarity-version: 2
         - contract-publish:
             contract-name: escrow-multi-token
             expected-sender: ST370TTX5XBMW5TKXV5HAPZFBEB1RMDEHEYEQXW90
-            cost: 472879
+            cost: 153110
             path: "contracts\\escrow-multi-token.clar"
             anchor-block-only: true
             clarity-version: 2
         - contract-publish:
             contract-name: freelance-data
             expected-sender: ST370TTX5XBMW5TKXV5HAPZFBEB1RMDEHEYEQXW90
-            cost: 469253
+            cost: 64210
             path: "contracts\\freelance-data.clar"
             anchor-block-only: true
             clarity-version: 2
         - contract-publish:
             contract-name: freelance-security
             expected-sender: ST370TTX5XBMW5TKXV5HAPZFBEB1RMDEHEYEQXW90
-            cost: 468832
+            cost: 53190
             path: "contracts\\freelance-security.clar"
             anchor-block-only: true
             clarity-version: 2
