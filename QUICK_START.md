@@ -203,13 +203,13 @@ npm install
 ## 📈 Platform Economics
 
 - **Milestone Distribution**: 25% each (4 milestones)
-- **Platform Fee**: 5% on each release
-- **Freelancer Receives**: 95% of milestone amount
+- **Platform Fee**: 10% on each release
+- **Freelancer Receives**: 90% of milestone amount
 - **Example**: 
   - Total: 60 STX
   - Per Milestone: 15 STX
-  - Freelancer Gets: 14.25 STX (95%)
-  - Platform Gets: 0.75 STX (5%)
+  - Freelancer Gets: 13.5 STX (90%)
+  - Platform Gets: 1.5 STX (10%)
 
 ## 🚦 Status Flow
 

@@ -33,7 +33,7 @@ npm run dev
 - **Secure Escrow**: Smart contract-based fund locking and release
 - **Role-Based Dashboards**: Separate interfaces for clients and freelancers
 - **Real-Time Updates**: Live blockchain transaction tracking
-- **5% Platform Fee**: Sustainable fee structure for platform maintenance
+- **10% Platform Fee**: Sustainable fee structure for platform maintenance
 
 ## 🏗️ Tech Stack
 
@@ -356,7 +356,7 @@ const SBTC_CONTRACT = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.sbtc-token'; //
 4. **Receive Payments**:
    - Client reviews and releases payment
    - Funds automatically sent to your wallet
-   - Platform fee (5%) deducted automatically
+   - Platform fee (10%) deducted automatically
 
 ---
 
@@ -515,7 +515,7 @@ clarinet console
 - [ ] Mark milestone complete (freelancer)
 - [ ] Release milestone payment (client)
 - [ ] Verify amounts display correctly
-- [ ] Check platform fee deduction (5%)
+- [ ] Check platform fee deduction (10%)
 - [ ] Test all 4 milestones
 - [ ] Verify project completion
 
@@ -562,7 +562,7 @@ clarinet console
 - Funds locked in smart contract escrow
 - Freelancer marks milestones complete
 - Client reviews and releases payment
-- Automatic 5% platform fee on each release
+- Automatic 10% platform fee on total payment
 
 ### Transaction Flow
 
@@ -583,7 +583,7 @@ clarinet console
 
 4. **Payment Release**:
    ```
-   Client → Approve → Smart Contract → Transfer (95% to freelancer, 5% platform fee)
+   Client → Approve → Smart Contract → Transfer (90% to freelancer, 10% platform fee)
    ```
 
 ### Smart Contract Functions

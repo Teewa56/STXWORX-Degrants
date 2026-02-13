@@ -372,11 +372,11 @@ export async function releaseEscrowOnChain(
     console.log('Freelancer:', freelancerAddress);
     console.log('Milestone Amount (micro-units):', milestoneAmount);
     
-    // Calculate fee (5%)
-    const fee = milestoneAmount ? Math.floor((milestoneAmount * 500) / 10000) : 0;
+    // Calculate fee (10%)
+    const fee = milestoneAmount ? Math.floor((milestoneAmount * 1000) / 10000) : 0;
     const payout = milestoneAmount ? milestoneAmount - fee : 0;
     
-    console.log('Fee (5%):', fee);
+    console.log('Fee (10%):', fee);
     console.log('Payout to freelancer:', payout);
     
     // Choose function based on token type

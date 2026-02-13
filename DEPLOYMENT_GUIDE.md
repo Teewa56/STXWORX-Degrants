@@ -118,8 +118,8 @@ export const SBTC_CONTRACT_NAME = 'sbtc-token';
 5. Switch to client wallet
 6. Click "Release Payment"
 7. **Approve 1 wallet popup** (with post-conditions)
-8. ✅ Freelancer receives 95%
-9. ✅ Treasury receives 5%
+8. ✅ Freelancer receives 90%
+9. ✅ Treasury receives 10%
 
 ## Step 5: Verify Everything Works
 

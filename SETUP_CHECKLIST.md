@@ -116,7 +116,7 @@ Use this checklist when setting up the repository for the first time or sharing 
 - [ ] Can mark milestone complete
 - [ ] Can release payment
 - [ ] Amounts display correctly (check decimal places!)
-- [ ] Platform fee deducted correctly (5%)
+- [ ] Platform fee deducted correctly (10%)
 - [ ] All 4 milestones work
 
 ### Production Readiness
@@ -190,7 +190,7 @@ Your setup is successful when:
 ✅ Can complete and release milestones
 ✅ Blockchain transactions confirm successfully
 ✅ Amounts display correctly for both STX and sBTC
-✅ Platform fee (5%) is deducted properly
+✅ Platform fee (10%) is deducted properly
 ✅ All dashboards (client/freelancer) work
 ✅ Documentation is clear and complete
 
