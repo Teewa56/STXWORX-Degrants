@@ -2,7 +2,6 @@
 ;; Freelance Logic Contract v1.0
 ;; Handles escrow operations, payments, and milestone management
 ;; Supports both STX and sBTC tokens
-;; Deployable on Stacks Mainnet - Production Ready
 ;; ========================================================================
 
 ;; ======================== TRAITS ========================
@@ -41,18 +40,18 @@
 ;; Escrow projects
 (define-map escrows
   { uint: {
-    client: principal
-    freelancer: principal
-    total-amount: uint
-    token-type: uint
-    status: (string-ascii 20)
-    created-at: uint
+    client: principal,  
+    freelancer: principal,
+    total-amount: uint,
+    token-type: uint,
+    status: (string-ascii 20),
+    created-at: uint,
     
     ;; Milestone data
-    milestone-1: { amount: uint, title: (string-ascii 200), complete: bool, released: bool }
-    milestone-2: { amount: uint, title: (string-ascii 200), complete: bool, released: bool }
-    milestone-3: { amount: uint, title: (string-ascii 200), complete: bool, released: bool }
-    milestone-4: { amount: uint, title: (string-ascii 200), complete: bool, released: bool }
+    milestone-1: { amount: uint, title: (string-ascii 200), complete: bool, released: bool },
+    milestone-2: { amount: uint, title: (string-ascii 200), complete: bool, released: bool },
+    milestone-3: { amount: uint, title: (string-ascii 200), complete: bool, released: bool },
+    milestone-4: { amount: uint, title: (string-ascii 200), complete: bool, released: bool },
   }}
 )
 
@@ -98,17 +97,17 @@
         (begin
           (var-set project-counter (+ u1 (var-get project-counter)))
           (map-set escrows (var-get project-counter) {
-            client: tx-sender
-            freelancer: freelancer
-            total-amount: total-amount
-            token-type: token-type
-            status: "PENDING"
-            created-at: block-height
+            client: tx-sender,
+            freelancer: freelancer,
+            total-amount: total-amount,
+            token-type: token-type,
+            status: "PENDING",
+            created-at: block-height,
             
-            milestone-1: { amount: quarter-amount, title: milestone-1-title, complete: false, released: false }
-            milestone-2: { amount: quarter-amount, title: milestone-2-title, complete: false, released: false }
-            milestone-3: { amount: quarter-amount, title: milestone-3-title, complete: false, released: false }
-            milestone-4: { amount: quarter-amount, title: milestone-4-title, complete: false, released: false }
+            milestone-1: { amount: quarter-amount, title: milestone-1-title, complete: false, released: false },
+            milestone-2: { amount: quarter-amount, title: milestone-2-title, complete: false, released: false },
+            milestone-3: { amount: quarter-amount, title: milestone-3-title, complete: false, released: false },
+            milestone-4: { amount: quarter-amount, title: milestone-4-title, complete: false, released: false },
           })
           (ok {escrow-id: (var-get project-counter)})
         )
@@ -158,7 +157,6 @@
         (err ERR-PROJECT-NOT-FOUND)
     )
   )
-)
 
 ;; Mark milestone as complete (freelancer only)
 (define-public (mark-milestone-complete (escrow-id uint) (milestone-num uint))
@@ -237,13 +235,13 @@
                                  (merge escrow { 
                                    milestone-1: (if (is-eq milestone-num u1) 
                                                 (merge (get milestone-1 escrow) { released: true })
-                                                (get milestone-1 escrow))
+                                                (get milestone-1 escrow)),
                                    milestone-2: (if (is-eq milestone-num u2) 
                                                 (merge (get milestone-2 escrow) { released: true })
-                                                (get milestone-2 escrow))
+                                                (get milestone-2 escrow)),
                                    milestone-3: (if (is-eq milestone-num u3) 
                                                 (merge (get milestone-3 escrow) { released: true })
-                                                (get milestone-3 escrow))
+                                                (get milestone-3 escrow)),
                                    milestone-4: (if (is-eq milestone-num u4) 
                                                 (merge (get milestone-4 escrow) { released: true })
                                                 (get milestone-4 escrow))
@@ -259,13 +257,13 @@
                                  (merge escrow { 
                                    milestone-1: (if (is-eq milestone-num u1) 
                                                 (merge (get milestone-1 escrow) { released: true })
-                                                (get milestone-1 escrow))
+                                                (get milestone-1 escrow)),
                                    milestone-2: (if (is-eq milestone-num u2) 
                                                 (merge (get milestone-2 escrow) { released: true })
-                                                (get milestone-2 escrow))
+                                                (get milestone-2 escrow)),
                                    milestone-3: (if (is-eq milestone-num u3) 
                                                 (merge (get milestone-3 escrow) { released: true })
-                                                (get milestone-3 escrow))
+                                                (get milestone-3 escrow)),
                                    milestone-4: (if (is-eq milestone-num u4) 
                                                 (merge (get milestone-4 escrow) { released: true })
                                                 (get milestone-4 escrow))
@@ -287,7 +285,6 @@
         (err ERR-PROJECT-NOT-FOUND)
     )
   )
-)
 
 ;; Check if project is complete (all milestones released)
 (define-read-only (is-project-complete (escrow-id uint))

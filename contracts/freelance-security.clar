@@ -1,14 +1,13 @@
 ;; ========================================================================
 ;; Freelance Security Contract v1.0
 ;; Multi-signature wallet and admin controls
-;; Deployable on Stacks Mainnet - Production Ready
 ;; ========================================================================
 
 ;; ======================== CONSTANTS ========================
 
 ;; Multi-sig configuration
-(define-constant SIGNERS-THRESHOLD u3)      ;; 3-of-5 signatures required
-(define-constant TIMELOCK-BLOCKS u144)        ;; 24 hours (144 blocks)
+(define-constant SIGNERS-THRESHOLD u3) ;; 3-of-5 signatures required
+(define-constant TIMELOCK-BLOCKS u144) ;; 24 hours (144 blocks)
 (define-constant MAX-SIGNERS u5)
 
 ;; Error codes
@@ -24,33 +23,38 @@
 
 ;; Multi-sig signers
 (define-map signers
-  { principal: bool })
+  principal
+  bool
+)
 
 ;; Pending transactions
 (define-map pending-transactions
-  { uint: {
-    proposer: principal
-    target-contract: principal
-    function-name: (string-ascii 50)
-    function-args: (list 10 (buff 1024))
-    approvals: (list 5 principal)
-    created-at: uint
-    execute-at: uint
-    executed: bool
-  }}
+  uint
+  {
+    proposer: principal,
+    target-contract: principal,
+    function-name: (string-ascii 50),
+    function-args: (list 10 (buff 1024)),
+    approvals: (list 5 principal),
+    created-at: uint,
+    execute-at: uint,
+    executed: bool,
+  }
 )
 
 ;; Admin permissions
 (define-map admin-permissions
-  { principal: {
-    can-pause: bool
-    can-unpause: bool
-    can-emergency-withdraw: bool
-    can-update-contract: bool
-  }})
+  principal
+  {
+    can-pause: bool,
+    can-unpause: bool,
+    can-emergency-withdraw: bool,
+    can-update-contract: bool,
+  }
+)
 
 ;; Transaction counter
-(define-data-var transaction-counter uint)
+(define-data-var transaction-counter uint u0)
 
 ;; ======================== SIGNATURE VERIFICATION ========================
 
@@ -60,24 +64,22 @@
 )
 
 ;; Check if transaction has enough valid signatures
-(define-read-only (has-enough-signatures (tx-id uint) (signatures (list 5 principal)))
-  (begin
-    (match (map-get? pending-transactions tx-id)
-      tx-data
-        (begin
-          ;; Count valid signatures
-          (fold signatures u0
-            (lambda (sig acc)
-              (if (and 
-                    (is-authorized-signer sig)
-                    (not (contains? (get approvals tx-data) sig)))
-                (+ acc u1)
-                acc
-              )
-            )
-        )
-        (err ERR-INVALID-PROPOSAL)
+(define-read-only (has-enough-signatures (tx-id uint))
+  (match (map-get? pending-transactions tx-id)
+    tx-data (let ((approvals (get approvals tx-data)))
+      (fold count-valid-signatures approvals u0)
     )
+    u0
+  )
+)
+
+(define-private (count-valid-signatures
+    (signer principal)
+    (count uint)
+  )
+  (if (is-authorized-signer signer)
+    (+ count u1)
+    count
   )
 )
 
@@ -93,15 +95,7 @@
         (if (is-eq (len signer-list) MAX-SIGNERS)
           (begin
             ;; Add all signers
-            (fold signer-list u0
-              (lambda (signer acc)
-                (begin
-                  (map-set signers signer true)
-                  acc
-                )
-              )
-            )
-            (ok true)
+            (ok (fold add-signer signer-list u0))
           )
           (err ERR-INVALID-PROPOSAL)
         )
@@ -111,11 +105,22 @@
   )
 )
 
+(define-private (add-signer
+    (signer principal)
+    (acc uint)
+  )
+  (begin
+    (map-set signers signer true)
+    (+ acc u1)
+  )
+)
+
 ;; Create multi-sig transaction proposal
-(define-public (create-proposal 
-  (target-contract principal)
-  (function-name (string-ascii 50))
-  (function-args (list 10 (buff 1024))))
+(define-public (create-proposal
+    (target-contract principal)
+    (function-name (string-ascii 50))
+    (function-args (list 10 (buff 1024)))
+  )
   (begin
     ;; Only authorized signers can create proposals
     (if (is-authorized-signer tx-sender)
@@ -123,16 +128,16 @@
         (var-set transaction-counter (+ u1 (var-get transaction-counter)))
         (let ((execute-at (+ block-height TIMELOCK-BLOCKS)))
           (map-set pending-transactions (var-get transaction-counter) {
-            proposer: tx-sender
-            target-contract: target-contract
-            function-name: function-name
-            function-args: function-args
-            approvals: (list 5 tx-sender)  ;; Proposer auto-approves
-            created-at: block-height
-            execute-at: execute-at
-            executed: false
+            proposer: tx-sender,
+            target-contract: target-contract,
+            function-name: function-name,
+            function-args: function-args,
+            approvals: (list tx-sender), ;; Proposer auto-approves
+            created-at: block-height,
+            execute-at: execute-at,
+            executed: false,
           })
-          (ok {proposal-id: (var-get transaction-counter)})
+          (ok { proposal-id: (var-get transaction-counter) })
         )
       )
       (err ERR-NOT-SIGNER)
@@ -144,22 +149,21 @@
 (define-public (approve-proposal (proposal-id uint))
   (begin
     (match (map-get? pending-transactions proposal-id)
-      proposal
-        (if (and 
-              (is-authorized-signer tx-sender)
-              (not (get executed proposal))
-              (not (contains? (get approvals proposal) tx-sender))
-          (begin
-            ;; Add approval
-            (map-set pending-transactions proposal-id 
-                   (merge proposal { 
-                     approvals: (append (get approvals proposal) tx-sender)
-                   }))
-            (ok true)
-          )
-          (err ERR-ALREADY-EXECUTED)
+      proposal (if (and
+          (is-authorized-signer tx-sender)
+          (not (get executed proposal))
+          (not (is-some (index-of (get approvals proposal) tx-sender)))
         )
-        (err ERR-INVALID-PROPOSAL)
+        (begin
+          ;; Add approval
+          (map-set pending-transactions proposal-id
+            (merge proposal { approvals: (unwrap-panic (as-max-len? (append (get approvals proposal) tx-sender) u5)) })
+          )
+          (ok true)
+        )
+        (err ERR-ALREADY-EXECUTED)
+      )
+      (err ERR-INVALID-PROPOSAL)
     )
   )
 )
@@ -168,46 +172,44 @@
 (define-public (execute-proposal (proposal-id uint))
   (begin
     (match (map-get? pending-transactions proposal-id)
-      proposal
-        (if (and 
-              (>= block-height (get execute-at proposal))
-              (not (get executed proposal))
-              (>= (has-enough-signatures proposal-id (get approvals proposal)) SIGNERS-THRESHOLD))
-          (begin
-            ;; Mark as executed
-            (map-set pending-transactions proposal-id 
-                   (merge proposal { executed: true }))
-            
-            ;; Execute the target function (simplified - needs proper contract calls)
-            (match (get function-name proposal)
-              "pause-escrow"
-                (begin
-                  ;; Call pause function on logic contract
-                  (contract-call? (get target-contract proposal) 
-                                 pause-all-escrows)
-                  (ok {executed: true})
-                )
-                
-              "emergency-withdraw"
-                (begin
-                  ;; Emergency withdraw from logic contract
-                  (contract-call? (get target-contract proposal) 
-                                 emergency-withdraw-all)
-                  (ok {executed: true})
-                )
-                
-              "update-contract"
-                (begin
-                  ;; Contract upgrade (requires special handling)
-                  (ok {executed: true})
-                )
-                
-              (ok {executed: false, error: "Unknown function"})
-            )
-          )
-          (err ERR-TIMELOCK-NOT-EXPIRED)
+      proposal (if (and
+          (>= block-height (get execute-at proposal))
+          (not (get executed proposal))
+          (>= (has-enough-signatures proposal-id) SIGNERS-THRESHOLD)
         )
-        (err ERR-INVALID-PROPOSAL)
+        (begin
+          ;; Mark as executed
+          (map-set pending-transactions proposal-id
+            (merge proposal { executed: true })
+          )
+
+          ;; Execute the target function (simplified - needs proper contract calls)
+          (match (get function-name proposal)
+            "pause-escrow"
+              (begin
+                ;; Call pause function on logic contract
+                (unwrap-panic (contract-call? .freelance-logic pause-all-escrows))
+                (ok {executed: true}))
+              
+            "emergency-withdraw"
+              (begin
+                ;; Emergency withdraw from logic contract
+                (unwrap-panic (contract-call? .freelance-logic emergency-withdraw-all))
+                (ok {executed: true}))
+            
+            "update-contract" (begin
+              ;; Contract upgrade (requires special handling)
+              (ok { executed: true })
+            )
+            (ok {
+              executed: false,
+              error: "Unknown function",
+            })
+          )
+        )
+        (err ERR-TIMELOCK-NOT-EXPIRED)
+      )
+      (err ERR-INVALID-PROPOSAL)
     )
   )
 )
@@ -231,9 +233,15 @@
 )
 
 ;; Update admin permissions
-(define-public (update-admin-permissions 
-  (admin principal)
-  (permissions { can-pause: bool, can-unpause: bool, can-emergency-withdraw: bool, can-update-contract: bool }))
+(define-public (update-admin-permissions
+    (admin principal)
+    (permissions {
+      can-pause: bool,
+      can-unpause: bool,
+      can-emergency-withdraw: bool,
+      can-update-contract: bool,
+    })
+  )
   (begin
     ;; Only contract deployer can update permissions
     (if (is-eq tx-sender 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
@@ -247,18 +255,20 @@
 )
 
 ;; Check admin permissions
-(define-read-only (check-admin-permissions (admin principal) (permission (string-ascii 20)))
+(define-read-only (check-admin-permissions
+    (admin principal)
+    (permission (string-ascii 20))
+  )
   (begin
     (match (map-get? admin-permissions admin)
-      permissions
-        (match permission
-          "can-pause" (ok (get can-pause permissions))
-          "can-unpause" (ok (get can-unpause permissions))
-          "can-emergency-withdraw" (ok (get can-emergency-withdraw permissions))
-          "can-update-contract" (ok (get can-update-contract permissions))
-          (ok false)
-        )
+      permissions (match permission
+        "can-pause" (ok (get can-pause permissions))
+        "can-unpause" (ok (get can-unpause permissions))
+        "can-emergency-withdraw" (ok (get can-emergency-withdraw permissions))
+        "can-update-contract" (ok (get can-update-contract permissions))
         (ok false)
+      )
+      (ok false)
     )
   )
 )
@@ -276,9 +286,15 @@
 ;; Get all pending proposals
 (define-read-only (get-pending-proposals)
   (begin
-    ;; This would need iteration logic in a full implementation
-    ;; For now, return empty list
-    (list 0 {proposal-id: uint})
+    ;; Returns up to 10 latest potential proposal IDs filtered by pending status
+    (filter is-proposal-pending (list u1 u2 u3 u4 u5 u6 u7 u8 u9 u10))
+  )
+)
+
+(define-private (is-proposal-pending (proposal-id uint))
+  (match (map-get? pending-transactions proposal-id)
+    proposal (not (get executed proposal))
+    false
   )
 )
 

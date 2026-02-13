@@ -7,8 +7,28 @@ cache_dir = "./.cache"
 requirements = []
 boot_contracts = []
 
-[contracts.escrow-multi-token-v4]
+[contracts.escrow-multi-token]
 path = "contracts/escrow-multi-token.clar"
+clarity_version = 2
+epoch = 2.5
+
+[contracts.freelance-data]
+path = "contracts/freelance-data.clar"
+clarity_version = 2
+epoch = 2.5
+
+[contracts.freelance-logic]
+path = "contracts/freelance-logic.clar"
+clarity_version = 2
+epoch = 2.5
+
+[contracts.freelance-security]
+path = "contracts/freelance-security.clar"
+clarity_version = 2
+epoch = 2.5
+
+[contracts.achievement-nfts]
+path = "contracts/achievement-nfts.clar"
 clarity_version = 2
 epoch = 2.5
 
