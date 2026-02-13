@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, json, inet } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -184,3 +184,110 @@ export const insertEscrowSchema = createInsertSchema(escrows).omit({
 
 export type InsertEscrow = z.infer<typeof insertEscrowSchema>;
 export type Escrow = typeof escrows.$inferSelect;
+
+// Admin actions table for audit logging
+export const adminActions = pgTable("admin_actions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id", { length: 36 }).references(() => users.id),
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  actionData: json("action_data").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  ipAddress: inet("ip_address"),
+});
+
+export const insertAdminActionSchema = createInsertSchema(adminActions).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertAdminAction = z.infer<typeof insertAdminActionSchema>;
+export type AdminAction = typeof adminActions.$inferSelect;
+
+// NFT achievements table
+export const nftAchievements = pgTable("nft_achievements", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id),
+  tokenId: integer("token_id").notNull(),
+  achievementType: varchar("achievement_type", { length: 20 }).notNull(),
+  mintedAt: timestamp("minted_at").defaultNow().notNull(),
+});
+
+export const insertNftAchievementSchema = createInsertSchema(nftAchievements).omit({
+  id: true,
+  mintedAt: true,
+});
+
+export type InsertNftAchievement = z.infer<typeof insertNftAchievementSchema>;
+export type NftAchievement = typeof nftAchievements.$inferSelect;
+
+// Chat messages table
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  senderId: varchar("sender_id", { length: 36 }).references(() => users.id),
+  encryptedContent: text("encrypted_content").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Leaderboard scores table
+export const leaderboardScores = pgTable("leaderboard_scores", {
+  userId: varchar("user_id", { length: 36 }).references(() => users.id),
+  scoreType: varchar("score_type", { length: 20 }).notNull(),
+  scoreValue: integer("score_value").notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+});
+
+export const insertLeaderboardScoreSchema = createInsertSchema(leaderboardScores).omit({
+  lastUpdated: true,
+});
+
+export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema>;
+export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
+
+// X integrations table
+export const xIntegrations = pgTable("x_integrations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id).unique(),
+  handle: varchar("handle", { length: 50 }).notNull(),
+  verified: boolean("verified").default(false).notNull(),
+  followerCount: integer("follower_count").default(0).notNull(),
+  engagementScore: integer("engagement_score").default(0).notNull(),
+  lastSync: timestamp("last_sync").defaultNow().notNull(),
+});
+
+export const insertXIntegrationSchema = createInsertSchema(xIntegrations).omit({
+  id: true,
+  lastSync: true,
+});
+
+export type InsertXIntegration = z.infer<typeof insertXIntegrationSchema>;
+export type XIntegration = typeof xIntegrations.$inferSelect;
+
+// DAO transactions table
+export const daoTransactions = pgTable("dao_transactions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  fromAddress: varchar("from_address", { length: 50 }).notNull(),
+  toAddress: varchar("to_address", { length: 50 }).notNull(),
+  amount: integer("amount").notNull(),
+  tokenType: varchar("token_type", { length: 20 }).default("STX").notNull(),
+  transactionType: varchar("transaction_type", { length: 50 }).notNull(),
+  description: text("description"),
+  txId: varchar("tx_id", { length: 100 }).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertDaoTransactionSchema = createInsertSchema(daoTransactions).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertDaoTransaction = z.infer<typeof insertDaoTransactionSchema>;
+export type DaoTransaction = typeof daoTransactions.$inferSelect;

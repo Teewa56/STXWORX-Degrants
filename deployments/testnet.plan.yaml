@@ -1,0 +1,37 @@
+---
+id: 0
+name: Freelance Platform Testnet Deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+contracts:
+  - contract-publish:
+      contract-name: freelance-data-v1
+      expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      cost: 50000
+      path: contracts/freelance-data.clar
+      clarity-version: 2
+      epoch: 2.5
+      
+  - contract-publish:
+      contract-name: freelance-logic-v1
+      expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      cost: 100000
+      path: contracts/freelance-logic.clar
+      clarity-version: 2
+      epoch: 2.5
+      
+  - contract-publish:
+      contract-name: freelance-security-v1
+      expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      cost: 75000
+      path: contracts/freelance-security.clar
+      clarity-version: 2
+      epoch: 2.5
+      
+  - contract-publish:
+      contract-name: achievement-nfts-v1
+      expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      cost: 50000
+      path: contracts/achievement-nfts.clar
+      clarity-version: 2
+      epoch: 2.5
