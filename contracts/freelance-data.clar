@@ -1,7 +1,7 @@
 ;; ========================================================================
 ;; Freelance Data Contract v1.0
 ;; Manages user profiles, categories, and leaderboard data
-;; Deployable on Stacks Mainnet - Production Ready
+;; Deployable on Stacks Mainnet
 ;; ========================================================================
 
 ;; ======================== CONSTANTS ========================
