@@ -9,17 +9,31 @@ plan:
     - id: 0
       transactions:
         - contract-publish:
-            contract-name: sbtc-token-mock
+            contract-name: achievement-nfts
             expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            cost: 150000
-            path: "contracts/sbtc-token-mock.clar"
+            cost: 68880
+            path: "contracts\\achievement-nfts.clar"
             anchor-block-only: true
             clarity-version: 2
         - contract-publish:
             contract-name: escrow-multi-token
             expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            cost: 200000
-            path: "contracts/escrow-multi-token.clar"
+            cost: 153110
+            path: "contracts\\escrow-multi-token.clar"
+            anchor-block-only: true
+            clarity-version: 2
+        - contract-publish:
+            contract-name: freelance-data
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 64210
+            path: "contracts\\freelance-data.clar"
+            anchor-block-only: true
+            clarity-version: 2
+        - contract-publish:
+            contract-name: freelance-security
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 53190
+            path: "contracts\\freelance-security.clar"
             anchor-block-only: true
             clarity-version: 2
       epoch: "2.5"
