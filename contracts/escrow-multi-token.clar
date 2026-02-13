@@ -15,7 +15,7 @@
 
 ;; ======================== CONSTANTS ========================
 
-(define-constant FEE-PERCENT u500)      ;; 5.00% = 500 basis points (5%)
+(define-constant FEE-PERCENT u1000)      ;; 10% = 1000 basis points (10%)
 (define-constant REFUND-TIMEOUT u144)   ;; ~24 hours (10 min blocks)
 (define-constant MAX-MILESTONES u4)     ;; Fixed 4 milestones
 
