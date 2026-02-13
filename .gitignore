@@ -79,5 +79,4 @@ CONSOLE_TESTS.md
 VISUAL_FLOWS.md
 QUICK_REFERENCE.md
 test-contract.clar
-secrets.toml
-settings/*.toml
+settings/

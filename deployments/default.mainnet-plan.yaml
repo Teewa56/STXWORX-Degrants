@@ -1,0 +1,39 @@
+---
+id: 0
+name: Mainnet deployment
+network: mainnet
+stacks-node: "https://api.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoin.blockstack.com:8332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: achievement-nfts
+            expected-sender: SP1G5V0S9XS3BT9SM0Q4MVH4BQE2XHB39R3FNVTJG
+            cost: 4192031
+            path: "contracts\\achievement-nfts.clar"
+            anchor-block-only: true
+            clarity-version: 2
+        - contract-publish:
+            contract-name: escrow-multi-token
+            expected-sender: SP1G5V0S9XS3BT9SM0Q4MVH4BQE2XHB39R3FNVTJG
+            cost: 2467341
+            path: "contracts\\escrow-multi-token.clar"
+            anchor-block-only: true
+            clarity-version: 2
+        - contract-publish:
+            contract-name: freelance-data
+            expected-sender: SP1G5V0S9XS3BT9SM0Q4MVH4BQE2XHB39R3FNVTJG
+            cost: 2463014
+            path: "contracts\\freelance-data.clar"
+            anchor-block-only: true
+            clarity-version: 2
+        - contract-publish:
+            contract-name: freelance-security
+            expected-sender: SP1G5V0S9XS3BT9SM0Q4MVH4BQE2XHB39R3FNVTJG
+            cost: 2462511
+            path: "contracts\\freelance-security.clar"
+            anchor-block-only: true
+            clarity-version: 2
+      epoch: "2.5"
