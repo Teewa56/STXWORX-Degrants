@@ -2,6 +2,7 @@
 
 ## Overview
 This document outlines all development tasks required to upgrade STXWORX-Degrants from testnet to production mainnet with enhanced features.
+It uses testnet for now- testing in development.
 
 ## Phase 1: Infrastructure & Foundation
 
@@ -107,7 +108,7 @@ This document outlines all development tasks required to upgrade STXWORX-Degrant
 - [ ] Validate emergency controls
 - [ ] Load test contract interactions
 
-### 3.2 Mainnet Deployment
+### 3.2 Testnet Deployment
 - [ ] Deploy `freelance-data.clar` contract
 - [ ] Deploy `freelance-logic.clar` contract
 - [ ] Deploy `freelance-security.clar` contract
