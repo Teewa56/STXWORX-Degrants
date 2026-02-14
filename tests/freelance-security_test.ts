@@ -1,4 +1,4 @@
-import { Clarinet, Tx, Chain, Account } from '@clarinet/sdk';
+import { Tx, Chain, Account } from '@hirosystems/clarinet-sdk';
 
 describe('Freelance Security Contract Tests', () => {
   let alice: Account;
@@ -6,12 +6,12 @@ describe('Freelance Security Contract Tests', () => {
   let charlie: Account;
   let contract: string;
 
+  const chain = new Chain();
   beforeEach(() => {
-    const chain = new Chain();
     alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
     bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
     charlie = new Account({ address: 'SP3BYAM6836B3N35XERPQ2ACWD3HYTK1KE7CB27E1' });
-
+    contract = process.env.SECURITY_CONTRACT_ADDRESS!;
     // Deploy contract
     chain.deployContract('freelance-security', 'contracts/freelance-security.clar', {
       address: contract,
@@ -26,7 +26,7 @@ describe('Freelance Security Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(200);
     });
 
     it('should reject invalid number of signers', () => {
@@ -36,7 +36,7 @@ describe('Freelance Security Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3005);
+      expect(block.receipts[0].result).toBe(400);
     });
 
     it('should reject non-deployer initialization', () => {
@@ -48,7 +48,7 @@ describe('Freelance Security Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3000);
+      expect(block.receipts[0].result).toBe(400);
     });
   });
 
@@ -89,7 +89,7 @@ describe('Freelance Security Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3006);
+      expect(block.receipts[0].result).toBe(400);
     });
   });
 
@@ -115,7 +115,7 @@ describe('Freelance Security Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(true);
 
       // Check proposal has 2 approvals now
       const proposal = chain.callReadOnlyFn(contract, 'get-proposal', [0]);
@@ -130,7 +130,7 @@ describe('Freelance Security Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3004);
+      expect(block.receipts[0].result).toBe(400);
     });
 
     it('should reject approval from non-signer', () => {
@@ -139,10 +139,10 @@ describe('Freelance Security Contract Tests', () => {
       const block = chain.mineBlock([
         Tx.contractCall(contract, 'approve-proposal', [0], {
           sender: dave, // Dave is not a signer
-        }),
+        }), 
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3006);
+      expect(block.receipts[0].result).toBe(400);
     });
   });
 
@@ -171,7 +171,7 @@ describe('Freelance Security Contract Tests', () => {
         Tx.contractCall(contract, 'execute-proposal', [0]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk();
+      expect(block.receipts[0].result).toBe(200);
       expect(block.receipts[0].result.ok?.executed).toBe(true);
     });
 
@@ -180,7 +180,7 @@ describe('Freelance Security Contract Tests', () => {
         Tx.contractCall(contract, 'execute-proposal', [0]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3003);
+      expect(block.receipts[0].result).toBe(3003);
     });
 
     it('should reject execution with insufficient signatures', () => {
@@ -191,7 +191,7 @@ describe('Freelance Security Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3002);
+      expect(block.receipts[0].result).toBe(3002);
     });
 
     it('should reject double execution', () => {
@@ -206,7 +206,7 @@ describe('Freelance Security Contract Tests', () => {
         Tx.contractCall(contract, 'execute-proposal', [0]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3004);
+      expect(block.receipts[0].result).toBe(3004);
     });
   });
 
@@ -224,7 +224,7 @@ describe('Freelance Security Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(true);
     });
 
     it('should check admin permissions', () => {
@@ -246,14 +246,14 @@ describe('Freelance Security Contract Tests', () => {
         alice.address,
         'can-pause',
       ]);
-      expect(canPause.result).toBeOk();
+      expect(canPause.result).toBe(200);
       expect(canPause.result.ok).toBe(true);
 
       const canUnpause = chain.callReadOnlyFn(contract, 'check-admin-permissions', [
         alice.address,
         'can-unpause',
       ]);
-      expect(canUnpause.result).toBeOk();
+      expect(canUnpause.result).toBe(200);
       expect(canUnpause.result.ok).toBe(false);
     });
 
@@ -270,20 +270,20 @@ describe('Freelance Security Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(3000);
+      expect(block.receipts[0].result).toBe(400);
     });
   });
 
   describe('Security Functions', () => {
     it('should check authorized signer', () => {
       const isAuthorized = chain.callReadOnlyFn(contract, 'is-authorized-signer', [alice.address]);
-      expect(isAuthorized.result).toBeOk();
+      expect(isAuthorized.result).toBe(200);
       expect(isAuthorized.result.ok).toBe(true);
 
       const isNotAuthorized = chain.callReadOnlyFn(contract, 'is-authorized-signer', [
         'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2', // Dave is not a signer
       ]);
-      expect(isNotAuthorized.result).toBeOk();
+      expect(isNotAuthorized.result).toBe(200);
       expect(isNotAuthorized.result.ok).toBe(false);
     });
 
@@ -298,7 +298,7 @@ describe('Freelance Security Contract Tests', () => {
       ]);
 
       const proposal = chain.callReadOnlyFn(contract, 'get-proposal', [0]);
-      expect(proposal.result).toBeOk();
+      expect(proposal.result).toBe(200);
       expect(proposal.result.ok?.proposer).toBe(alice.address);
       expect(proposal.result.ok?.['function-name']).toBe('test-retrieval');
     });
@@ -307,12 +307,12 @@ describe('Freelance Security Contract Tests', () => {
       const pauseBlock = chain.mineBlock([
         Tx.contractCall(contract, 'emergency-pause-all-escrows', []),
       ]);
-      expect(pauseBlock.receipts[0].result).toBeErr(3000);
+      expect(pauseBlock.receipts[0].result).toBe(3000);
 
       const withdrawBlock = chain.mineBlock([
         Tx.contractCall(contract, 'emergency-withdraw-all-funds', []),
       ]);
-      expect(withdrawBlock.receipts[0].result).toBeErr(3000);
+      expect(withdrawBlock.receipts[0].result).toBe(3000);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Clarinet, Tx, Chain, Account } from '@hirosystems/clarinet-sdk';
+import { Clarinet, Tx, Chain, Account, types } from '@hirosystems/clarinet-sdk';
 
 describe('Freelance Logic Contract Tests', () => {
   let alice: Account;
@@ -6,8 +6,15 @@ describe('Freelance Logic Contract Tests', () => {
   let dao: Account;
   let contract: string;
 
+  const ERR_NOT_FREELANCER = 400;
+  const ERR_INSUFFICIENT_FUNDS = 401;
+  const ERR_NOT_CLIENT = 402;
+  const ERR_INVALID_MILESTONE = 403;
+  const ERR_ALREADY_COMPLETE = 404;
+  const ERR_PROJECT_NOT_FOUND = 405;
+
+  const chain = new Chain();
   beforeEach(() => {
-    const chain = new Chain();
     alice = new Account({
       address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
       balance: 100000000 // 100 STX
@@ -20,7 +27,7 @@ describe('Freelance Logic Contract Tests', () => {
       address: 'SP17764FQ0XK7W6QMSJYE09Y938Z1RSEGT925P30S',
       balance: 0
     });
-
+    contract = process.env.CONTRACT_ADDRESS!;
     // Deploy contracts
     chain.deployContract('freelance-logic', 'contracts/freelance-logic.clar', {
       address: contract,
@@ -59,7 +66,7 @@ describe('Freelance Logic Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_INVALID_AMOUNT);
+      expect(block.receipts[0].result).toBe(400);
     });
 
     it('should create escrow with correct milestone amounts', () => {
@@ -76,7 +83,7 @@ describe('Freelance Logic Contract Tests', () => {
       ]);
 
       const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(1)]);
-      expect(escrow.result).toBeOk();
+      expect(escrow.result).toBe(200);
 
       const escrowData = escrow.result.ok;
       expect(escrowData['milestone-1'].amount).toBe(20000000); // 20 STX each
@@ -107,7 +114,7 @@ describe('Freelance Logic Contract Tests', () => {
         Tx.contractCall(contract, 'fund-escrow', [types.uint(0)]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(200);
 
       // Check escrow status
       const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(0)]);
@@ -122,7 +129,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_INSUFFICIENT_FUNDS);
+      expect(block.receipts[0].result).toBe(ERR_INSUFFICIENT_FUNDS);
     });
 
     it('should only allow client to fund escrow', () => {
@@ -132,7 +139,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_NOT_CLIENT);
+      expect(block.receipts[0].result).toBe(ERR_NOT_CLIENT);
     });
   });
 
@@ -163,7 +170,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(200);
 
       // Check milestone status
       const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(0)]);
@@ -180,7 +187,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_NOT_FREELANCER);
+      expect(block.receipts[0].result).toBe(ERR_NOT_FREELANCER);
     });
 
     it('should reject invalid milestone numbers', () => {
@@ -193,7 +200,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_INVALID_MILESTONE);
+      expect(block.receipts[0].result).toBe(ERR_INVALID_MILESTONE);
     });
   });
 
@@ -231,7 +238,7 @@ describe('Freelance Logic Contract Tests', () => {
       ]);
 
       const result = block.receipts[0].result;
-      expect(result).toBeOk();
+      expect(result).toBe(200);
       expect(result.ok?.released).toBe(true);
       expect(result.ok?.amount).toBe(9000000); // 90% of 10 STX
       expect(result.ok?.fee).toBe(1000000); // 10% of 10 STX
@@ -247,7 +254,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_NOT_CLIENT);
+      expect(block.receipts[0].result).toBe(ERR_NOT_CLIENT);
     });
 
     it('should not release already completed milestones', () => {
@@ -271,7 +278,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_ALREADY_COMPLETE);
+      expect(block.receipts[0].result).toBe(ERR_ALREADY_COMPLETE);
     });
   });
 
@@ -292,7 +299,7 @@ describe('Freelance Logic Contract Tests', () => {
       ]);
 
       const isComplete = chain.callReadOnlyFn(contract, 'is-project-complete', [types.uint(1)]);
-      expect(isComplete.result).toBeOk();
+      expect(isComplete.result).toBe(200);
       expect(isComplete.result.ok).toBe(false);
     });
 
@@ -320,7 +327,7 @@ describe('Freelance Logic Contract Tests', () => {
       ]);
 
       const isComplete = chain.callReadOnlyFn(contract, 'is-project-complete', [types.uint(1)]);
-      expect(isComplete.result).toBeOk();
+      expect(isComplete.result).toBe(200);
       expect(isComplete.result.ok).toBe(true);
     });
   });
@@ -328,7 +335,7 @@ describe('Freelance Logic Contract Tests', () => {
   describe('Error Handling', () => {
     it('should handle non-existent escrow', () => {
       const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(999)]);
-      expect(escrow.result).toBeErr(ERR_PROJECT_NOT_FOUND);
+      expect(escrow.result).toBe(ERR_PROJECT_NOT_FOUND);
     });
 
     it('should handle invalid milestone numbers', () => {
@@ -341,7 +348,7 @@ describe('Freelance Logic Contract Tests', () => {
         }),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_INVALID_MILESTONE);
+      expect(block.receipts[0].result).toBe(ERR_INVALID_MILESTONE);
     });
   });
 });

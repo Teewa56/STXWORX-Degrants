@@ -1,6 +1,4 @@
-import { Clarinet, Tx, Chain, Account } from '@hirosystems/clarinet-sdk';
-import { ok } from 'assert';
-import { types } from 'util';
+import { Clarinet, Tx, Chain, Account, types } from '@hirosystems/clarinet-sdk';
 
 const ERR_UNAUTHORIZED = 1000;
 const ERR_ALREADY_EXISTS = 1001;
@@ -14,7 +12,7 @@ describe('Freelance Data Contract Tests', () => {
   beforeEach(() => {
     alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
     bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
-    contract = alice.address;
+    contract = process.env.DATA_CONTRACT_ADDRESS!;
     
     // Deploy contract
     chain.deployContract('freelance-data', 'contracts/freelance-data.clar', {
@@ -45,7 +43,7 @@ describe('Freelance Data Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_ALREADY_EXISTS);
+      expect(block.receipts[0].result).toBe(ERR_ALREADY_EXISTS);
     });
 
     it('should update user reputation', () => {
@@ -111,7 +109,7 @@ describe('Freelance Data Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_UNAUTHORIZED);
+      expect(block.receipts[0].result).toBe(ERR_UNAUTHORIZED);
     });
   });
 
@@ -177,7 +175,7 @@ describe('Freelance Data Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeErr(ERR_ALREADY_EXISTS);
+      expect(block.receipts[0].result).toBe(ERR_ALREADY_EXISTS);
     });
 
     it('should retrieve user achievements', () => {
