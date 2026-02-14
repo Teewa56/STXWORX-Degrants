@@ -1,7 +1,11 @@
 import { Clarinet, Tx, Chain, Account, types } from '@hirosystems/clarinet-sdk';
 
 const ERR_UNAUTHORIZED = 1000;
-const ERR_ALREADY_EXISTS = 1001;
+const ERR_NOT_FOUND = 1001;
+const ERR_ALREADY_EXISTS = 1002;
+const ERR_INVALID_DATA = 1003;
+const ERR_CONTRACT_PAUSED = 1004;
+const ERR_INVALID_USERNAME = 1005;
 
 describe('Freelance Data Contract Tests', () => {
   let alice: Account;
@@ -13,7 +17,7 @@ describe('Freelance Data Contract Tests', () => {
     alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
     bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
     contract = process.env.DATA_CONTRACT_ADDRESS!;
-    
+
     // Deploy contract
     chain.deployContract('freelance-data', 'contracts/freelance-data.clar', {
       address: contract,
@@ -64,8 +68,8 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const profile = chain.callReadOnlyFn(contract, 'get-user-profile', [types.principal(bob.address)]);
-      expect(profile.result).toBe(200);
-      expect(profile.result.ok?.reputation).toBe(5000);
+      profile.result.expectOk();
+      expect(profile.result.expectOk().expectSome().reputation).toBe(5000);
     });
   });
 
@@ -95,9 +99,9 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const category = chain.callReadOnlyFn(contract, 'get-category', [types.uint(1)]);
-      expect(category.result).toBe(200);
-      expect(category.result.ok?.name).toBe('Mobile Development');
-      expect(category.result.ok?.subcategories).toHaveLength(2);
+      category.result.expectOk();
+      expect(category.result.expectOk().expectSome().name).toBe('Mobile Development');
+      expect(category.result.expectOk().expectSome().subcategories).toHaveLength(2);
     });
 
     it('should not allow non-admin to add categories', () => {
@@ -139,8 +143,8 @@ describe('Freelance Data Contract Tests', () => {
         types.ascii('project-completion'),
       ]);
 
-      expect(score.result).toBe(200);
-      expect(score.result.ok?.['score-value']).toBe(25);
+      score.result.expectOk();
+      expect(score.result.expectOk().expectSome()['score-value']).toBe(25);
     });
   });
 
@@ -192,8 +196,8 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const achievements = chain.callReadOnlyFn(contract, 'get-user-achievements', [types.principal(alice.address)]);
-      expect(achievements.result).toBe(200);
-      expect(Object.keys(achievements.result.ok || {})).toHaveLength(2);
+      achievements.result.expectOk();
+      expect(Object.keys(achievements.result.expectOk() || {})).toHaveLength(2);
     });
   });
 

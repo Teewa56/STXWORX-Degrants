@@ -6,12 +6,14 @@ describe('Freelance Logic Contract Tests', () => {
   let dao: Account;
   let contract: string;
 
-  const ERR_NOT_FREELANCER = 400;
-  const ERR_INSUFFICIENT_FUNDS = 401;
-  const ERR_NOT_CLIENT = 402;
-  const ERR_INVALID_MILESTONE = 403;
-  const ERR_ALREADY_COMPLETE = 404;
-  const ERR_PROJECT_NOT_FOUND = 405;
+  const ERR_NOT_CLIENT = 100;
+  const ERR_NOT_FREELANCER = 101;
+  const ERR_PROJECT_NOT_FOUND = 102;
+  const ERR_INVALID_MILESTONE = 103;
+  const ERR_NOT_COMPLETE = 105;
+  const ERR_ALREADY_RELEASED = 106;
+  const ERR_ALREADY_COMPLETE = 116;
+  const ERR_CONTRACT_PAUSED = 120;
 
   const chain = new Chain();
   beforeEach(() => {
@@ -29,7 +31,7 @@ describe('Freelance Logic Contract Tests', () => {
     });
     contract = process.env.CONTRACT_ADDRESS!;
     // Deploy contracts
-    chain.deployContract('freelance-logic', 'contracts/freelance-logic.clar', {
+    chain.deployContract('escrow-multi-token', 'contracts/escrow-multi-token.clar', {
       address: contract,
     });
   });
@@ -37,14 +39,12 @@ describe('Freelance Logic Contract Tests', () => {
   describe('Escrow Creation', () => {
     it('should create new escrow with valid data', () => {
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'create-escrow', [
+        Tx.contractCall(contract, 'create-project-stx', [
           types.principal(bob.address),
-          types.uint(60000000), // 60 STX
-          types.uint(0), // STX token type
-          types.ascii('Milestone 1: Setup'),
-          types.ascii('Milestone 2: Development'),
-          types.ascii('Milestone 3: Testing'),
-          types.ascii('Milestone 4: Deployment'),
+          types.uint(15000000), // m1
+          types.uint(15000000), // m2
+          types.uint(15000000), // m3
+          types.uint(15000000), // m4
         ]),
       ]);
 
@@ -55,14 +55,12 @@ describe('Freelance Logic Contract Tests', () => {
 
     it('should validate milestone amounts sum to total', () => {
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'create-escrow', [
+        Tx.contractCall(contract, 'create-project-stx', [
           types.principal(bob.address),
-          types.uint(50000000), // 50 STX - not divisible by 4
-          types.uint(0),
-          types.ascii('Milestone 1'),
-          types.ascii('Milestone 2'),
-          types.ascii('Milestone 3'),
-          types.ascii('Milestone 4'),
+          types.uint(12500000), // m1
+          types.uint(12500000), // m2
+          types.uint(12500000), // m3
+          types.uint(12500000), // m4
         ]),
       ]);
 
@@ -71,14 +69,12 @@ describe('Freelance Logic Contract Tests', () => {
 
     it('should create escrow with correct milestone amounts', () => {
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'create-escrow', [
+        Tx.contractCall(contract, 'create-project-stx', [
           types.principal(bob.address),
-          types.uint(80000000), // 80 STX
-          types.uint(0),
-          types.ascii('Phase 1'),
-          types.ascii('Phase 2'),
-          types.ascii('Phase 3'),
-          types.ascii('Phase 4'),
+          types.uint(20000000), // m1
+          types.uint(20000000), // m2
+          types.uint(20000000), // m3
+          types.uint(20000000), // m4
         ]),
       ]);
 
@@ -93,88 +89,37 @@ describe('Freelance Logic Contract Tests', () => {
     });
   });
 
-  describe('Escrow Funding', () => {
-    beforeEach(() => {
-      // Create escrow first
-      chain.mineBlock([
-        Tx.contractCall(contract, 'create-escrow', [
-          types.principal(bob.address),
-          types.uint(40000000), // 40 STX
-          types.uint(0),
-          types.ascii('Design'),
-          types.ascii('Build'),
-          types.ascii('Test'),
-          types.ascii('Deploy'),
-        ]),
-      ]);
-    });
-
-    it('should fund escrow with sufficient balance', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'fund-escrow', [types.uint(0)]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(200);
-
-      // Check escrow status
-      const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(0)]);
-      expect(escrow.result.ok?.status).toBe('FUNDED');
-    });
-
-    it('should reject funding with insufficient balance', () => {
-      // Use alice with insufficient balance
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'fund-escrow', [types.uint(0)], {
-          sender: alice,
-        }),
-      ]);
-
-      expect(block.receipts[0].result).toBe(ERR_INSUFFICIENT_FUNDS);
-    });
-
-    it('should only allow client to fund escrow', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'fund-escrow', [types.uint(0)], {
-          sender: bob, // Bob is freelancer, not client
-        }),
-      ]);
-
-      expect(block.receipts[0].result).toBe(ERR_NOT_CLIENT);
-    });
-  });
+  // Funding is now handled within create-project-stx
 
   describe('Milestone Management', () => {
     beforeEach(() => {
-      // Create and fund escrow
+      // Create project
       chain.mineBlock([
-        Tx.contractCall(contract, 'create-escrow', [
+        Tx.contractCall(contract, 'create-project-stx', [
           types.principal(bob.address),
-          types.uint(40000000),
-          types.uint(0),
-          types.ascii('Task 1'),
-          types.ascii('Task 2'),
-          types.ascii('Task 3'),
-          types.ascii('Task 4'),
+          types.uint(10000000),
+          types.uint(10000000),
+          types.uint(10000000),
+          types.uint(10000000),
         ]),
-        Tx.contractCall(contract, 'fund-escrow', [types.uint(0)]),
       ]);
     });
 
     it('should allow freelancer to mark milestone complete', () => {
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'mark-milestone-complete', [
-          types.uint(0),
-          types.uint(1),
+        Tx.contractCall(contract, 'complete-milestone', [
+          types.uint(1), // project-id starts at 1
+          types.uint(1), // milestone-num
         ], {
           sender: bob, // Bob is freelancer
         }),
       ]);
 
-      expect(block.receipts[0].result).toBe(200);
+      expect(block.receipts[0].result).toBe(true);
 
       // Check milestone status
-      const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(0)]);
-      expect(escrow.result.ok?.['milestone-1'].complete).toBe(true);
+      const milestone = chain.callReadOnlyFn(contract, 'get-milestone', [types.uint(1), types.uint(1)]);
+      expect(milestone.result.ok?.complete).toBe(true);
     });
 
     it('should not allow client to mark milestone complete', () => {
@@ -229,8 +174,8 @@ describe('Freelance Logic Contract Tests', () => {
 
     it('should release milestone payment with correct fee distribution', () => {
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'release-milestone-payment', [
-          types.uint(0),
+        Tx.contractCall(contract, 'release-milestone-stx', [
+          types.uint(1),
           types.uint(1),
         ], {
           sender: alice, // Alice is client
@@ -238,10 +183,7 @@ describe('Freelance Logic Contract Tests', () => {
       ]);
 
       const result = block.receipts[0].result;
-      expect(result).toBe(200);
-      expect(result.ok?.released).toBe(true);
-      expect(result.ok?.amount).toBe(9000000); // 90% of 10 STX
-      expect(result.ok?.fee).toBe(1000000); // 10% of 10 STX
+      expect(result).toBe(9000000); // 90% of 10 STX
     });
 
     it('should only allow client to release payments', () => {
@@ -260,8 +202,8 @@ describe('Freelance Logic Contract Tests', () => {
     it('should not release already completed milestones', () => {
       // Complete milestone 2 first
       chain.mineBlock([
-        Tx.contractCall(contract, 'release-milestone-payment', [
-          types.uint(0),
+        Tx.contractCall(contract, 'release-milestone-stx', [
+          types.uint(1),
           types.uint(1),
         ], {
           sender: alice,
@@ -270,8 +212,8 @@ describe('Freelance Logic Contract Tests', () => {
 
       // Try to release same milestone again
       const block = chain.mineBlock([
-        Tx.contractCall(contract, 'release-milestone-payment', [
-          types.uint(0),
+        Tx.contractCall(contract, 'release-milestone-stx', [
+          types.uint(1),
           types.uint(1),
         ], {
           sender: alice,
@@ -320,10 +262,10 @@ describe('Freelance Logic Contract Tests', () => {
         Tx.contractCall(contract, 'mark-milestone-complete', [types.uint(0), types.uint(2)], { sender: bob }),
         Tx.contractCall(contract, 'mark-milestone-complete', [types.uint(0), types.uint(3)], { sender: bob }),
         Tx.contractCall(contract, 'mark-milestone-complete', [types.uint(0), types.uint(4)], { sender: bob }),
-        Tx.contractCall(contract, 'release-milestone-payment', [types.uint(0), types.uint(1)], { sender: alice }),
-        Tx.contractCall(contract, 'release-milestone-payment', [types.uint(0), types.uint(2)], { sender: alice }),
-        Tx.contractCall(contract, 'release-milestone-payment', [types.uint(0), types.uint(3)], { sender: alice }),
-        Tx.contractCall(contract, 'release-milestone-payment', [types.uint(0), types.uint(4)], { sender: alice }),
+        Tx.contractCall(contract, 'release-milestone-stx', [types.uint(0), types.uint(1)], { sender: alice }),
+        Tx.contractCall(contract, 'release-milestone-stx', [types.uint(0), types.uint(2)], { sender: alice }),
+        Tx.contractCall(contract, 'release-milestone-stx', [types.uint(0), types.uint(3)], { sender: alice }),
+        Tx.contractCall(contract, 'release-milestone-stx', [types.uint(0), types.uint(4)], { sender: alice }),
       ]);
 
       const isComplete = chain.callReadOnlyFn(contract, 'is-project-complete', [types.uint(1)]);
