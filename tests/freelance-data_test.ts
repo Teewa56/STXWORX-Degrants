@@ -1,12 +1,17 @@
 import { Clarinet, Tx, Chain, Account } from '@hirosystems/clarinet-sdk';
+import { ok } from 'assert';
+import { types } from 'util';
+
+const ERR_UNAUTHORIZED = 1000;
+const ERR_ALREADY_EXISTS = 1001;
 
 describe('Freelance Data Contract Tests', () => {
   let alice: Account;
   let bob: Account;
   let contract: string;
 
+  const chain = new Chain();
   beforeEach(() => {
-    const chain = new Chain();
     alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
     bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
     contract = alice.address;
@@ -61,7 +66,7 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const profile = chain.callReadOnlyFn(contract, 'get-user-profile', [types.principal(bob.address)]);
-      expect(profile.result).toBeOk();
+      expect(profile.result).toBe(200);
       expect(profile.result.ok?.reputation).toBe(5000);
     });
   });
@@ -92,7 +97,7 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const category = chain.callReadOnlyFn(contract, 'get-category', [types.uint(1)]);
-      expect(category.result).toBeOk();
+      expect(category.result).toBe(200);
       expect(category.result.ok?.name).toBe('Mobile Development');
       expect(category.result.ok?.subcategories).toHaveLength(2);
     });
@@ -119,7 +124,7 @@ describe('Freelance Data Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(200);
     });
 
     it('should retrieve leaderboard score', () => {
@@ -136,7 +141,7 @@ describe('Freelance Data Contract Tests', () => {
         types.ascii('project-completion'),
       ]);
 
-      expect(score.result).toBeOk();
+      expect(score.result).toBe(200);
       expect(score.result.ok?.['score-value']).toBe(25);
     });
   });
@@ -189,7 +194,7 @@ describe('Freelance Data Contract Tests', () => {
       ]);
 
       const achievements = chain.callReadOnlyFn(contract, 'get-user-achievements', [types.principal(alice.address)]);
-      expect(achievements.result).toBeOk();
+      expect(achievements.result).toBe(200);
       expect(Object.keys(achievements.result.ok || {})).toHaveLength(2);
     });
   });
@@ -212,11 +217,11 @@ describe('Freelance Data Contract Tests', () => {
         ]),
       ]);
 
-      expect(block.receipts[0].result).toBeOk(true);
+      expect(block.receipts[0].result).toBe(200);
 
       // Check updated profile
       const profile = chain.callReadOnlyFn(contract, 'get-user-profile', [types.principal(bob.address)]);
-      expect(profile.result.ok?.completed-projects).toBe(1);
+      expect(profile.result.ok?.['completed-projects']).toBe(1);
       expect(profile.result.ok?.['total-earnings']).toBe(50000);
     });
   });

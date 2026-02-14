@@ -8,15 +8,15 @@ describe('Freelance Logic Contract Tests', () => {
 
   beforeEach(() => {
     const chain = new Chain();
-    alice = new Account({ 
+    alice = new Account({
       address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
       balance: 100000000 // 100 STX
     });
-    bob = new Account({ 
+    bob = new Account({
       address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2',
       balance: 50000000 // 50 STX
     });
-    dao = new Account({ 
+    dao = new Account({
       address: 'SP17764FQ0XK7W6QMSJYE09Y938Z1RSEGT925P30S',
       balance: 0
     });
@@ -77,7 +77,7 @@ describe('Freelance Logic Contract Tests', () => {
 
       const escrow = chain.callReadOnlyFn(contract, 'get-escrow', [types.uint(1)]);
       expect(escrow.result).toBeOk();
-      
+
       const escrowData = escrow.result.ok;
       expect(escrowData['milestone-1'].amount).toBe(20000000); // 20 STX each
       expect(escrowData['milestone-2'].amount).toBe(20000000);

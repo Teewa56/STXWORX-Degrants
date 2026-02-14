@@ -7,7 +7,7 @@ Clarinet.test({
         const deployer = accounts.get('deployer')!;
         const client = accounts.get('wallet_1')!;
         const freelancer = accounts.get('wallet_2')!;
-        
+
         let block = chain.mineBlock([
             Tx.contractCall(
                 'escrow-multi-token-v4',
@@ -22,7 +22,7 @@ Clarinet.test({
                 client.address
             )
         ]);
-        
+
         block.receipts[0].result.expectOk().expectUint(1);
         console.log("✅ STX Project created successfully");
     },
@@ -33,7 +33,7 @@ Clarinet.test({
     async fn(chain: Chain, accounts: Map<string, Account>) {
         const client = accounts.get('wallet_1')!;
         const freelancer = accounts.get('wallet_2')!;
-        
+
         // Create project
         let block = chain.mineBlock([
             Tx.contractCall(
@@ -49,7 +49,7 @@ Clarinet.test({
                 client.address
             )
         ]);
-        
+
         // Complete milestone
         block = chain.mineBlock([
             Tx.contractCall(
@@ -59,10 +59,10 @@ Clarinet.test({
                 freelancer.address
             )
         ]);
-        
+
         block.receipts[0].result.expectOk().expectBool(true);
         console.log("✅ Milestone completed");
-        
+
         // Release payment
         block = chain.mineBlock([
             Tx.contractCall(
@@ -72,7 +72,7 @@ Clarinet.test({
                 client.address
             )
         ]);
-        
+
         block.receipts[0].result.expectOk();
         console.log("✅ STX payment released successfully");
     },
@@ -82,7 +82,7 @@ Clarinet.test({
     name: "Test 3: Get contract info",
     async fn(chain: Chain, accounts: Map<string, Account>) {
         const client = accounts.get('wallet_1')!;
-        
+
         let block = chain.mineBlock([
             Tx.contractCall(
                 'escrow-multi-token-v4',
@@ -91,7 +91,7 @@ Clarinet.test({
                 client.address
             )
         ]);
-        
+
         console.log("✅ Project count:", block.receipts[0].result);
     },
 });

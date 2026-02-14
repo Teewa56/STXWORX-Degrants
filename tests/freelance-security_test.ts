@@ -78,7 +78,7 @@ describe('Freelance Security Contract Tests', () => {
 
     it('should reject proposal from non-signer', () => {
       const dave = new Account({ address: 'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
-      
+
       const block = chain.mineBlock([
         Tx.contractCall(contract, 'create-proposal', [
           alice.address,
@@ -135,7 +135,7 @@ describe('Freelance Security Contract Tests', () => {
 
     it('should reject approval from non-signer', () => {
       const dave = new Account({ address: 'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
-      
+
       const block = chain.mineBlock([
         Tx.contractCall(contract, 'approve-proposal', [0], {
           sender: dave, // Dave is not a signer
