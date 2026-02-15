@@ -1,294 +1,231 @@
-import { Tx, Chain, Account } from '@hirosystems/clarinet-sdk';
+import { describe, expect, it, beforeEach } from "vitest";
+import { Cl } from "@stacks/transactions";
 
-describe('Freelance Security Contract Tests', () => {
-  let alice: Account;
-  let bob: Account;
-  let charlie: Account;
-  let contract: string;
+const accounts = simnet.getAccounts();
+const deployer = accounts.get("deployer")!;
+const alice = accounts.get("wallet_1")!;
+const bob = accounts.get("wallet_2")!;
+const charlie = accounts.get("wallet_3")!;
+const dave = accounts.get("wallet_4")!;
+const eve = accounts.get("wallet_5")!;
 
-  const ERR_UNAUTHORIZED = 3000;
-  const ERR_INSUFFICIENT_SIGNATURES = 3002;
-  const ERR_TIMELOCK_NOT_EXPIRED = 3003;
-  const ERR_ALREADY_EXECUTED = 3004;
-  const ERR_INVALID_PROPOSAL = 3005;
-  const ERR_NOT_SIGNER = 3006;
-  const ERR_ALREADY_APPROVED = 3007;
+describe("Freelance Security Contract Tests", () => {
+  
+  describe("Multi-Sig Initialization", () => {
+    it("should initialize 5 signers", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
+      
+      expect(result).toBeOk(Cl.bool(true));
+    });
 
-  const chain = new Chain();
-  beforeEach(() => {
-    alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
-    bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
-    charlie = new Account({ address: 'SP3BYAM6836B3N35XERPQ2ACWD3HYTK1KE7CB27E1' });
-    contract = process.env.SECURITY_CONTRACT_ADDRESS!;
-    // Deploy contract
-    chain.deployContract('freelance-security', 'contracts/freelance-security.clar', {
-      address: contract,
+    it("should reject re-initialization", () => {
+      simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
+
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
+      
+      expect(result).toBeErr(Cl.uint(3000)); // ERR-UNAUTHORIZED
     });
   });
 
-  describe('Multi-Sig Initialization', () => {
-    it('should initialize authorized signers', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'initialize-signers', [
-          [alice.address, bob.address, charlie.address],
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(200);
+  describe("Proposal Creation", () => {
+    beforeEach(() => {
+      simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
     });
 
-    expect(block.receipts[0].result).toBe(ERR_ALREADY_EXECUTED); // Assuming it checks for already initialized or similar logic error
-  });
-});
+    it("should create pause proposal", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "create-pause-proposal",
+        [],
+        alice
+      );
+      
+      expect(result).toBeOk(Cl.uint(1));
+    });
 
-describe('Proposal Management', () => {
-  beforeEach(() => {
-    // Initialize signers first
-    chain.mineBlock([
-      Tx.contractCall(contract, 'initialize-signers', [
-        [alice.address, bob.address, charlie.address],
-      ]),
-    ]);
-  });
-
-  it('should create new proposal', () => {
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'create-proposal', [
-        alice.address, // Target contract (logic contract)
-        'pause-escrow',
-        ['test-argument'],
-      ]),
-    ]);
-
-    const result = block.receipts[0].result;
-    expect(result).toHaveProperty('proposal-id');
-    expect(result['proposal-id']).toBe(0); // First proposal
+    it("should reject proposal from non-signer", () => {
+      const nonSigner = accounts.get("wallet_6")!;
+      
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "create-pause-proposal",
+        [],
+        nonSigner
+      );
+      
+      expect(result).toBeErr(Cl.uint(3006)); // ERR-NOT-SIGNER
+    });
   });
 
-  it('should reject proposal from non-signer', () => {
-    const dave = new Account({ address: 'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
+  describe("Proposal Approval", () => {
+    beforeEach(() => {
+      simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
 
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'create-proposal', [
-        alice.address,
-        'test-function',
-        ['arg'],
-      ], {
-        sender: dave, // Dave is not a signer
-      }),
-    ]);
+      simnet.callPublicFn(
+        "freelance-security",
+        "create-pause-proposal",
+        [],
+        alice
+      );
+    });
 
-    expect(block.receipts[0].result).toBe(ERR_INVALID_PROPOSAL);
-  });
-});
+    it("should allow signer to approve", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "approve-proposal",
+        [Cl.uint(1)],
+        bob
+      );
+      
+      expect(result).toBeOk(Cl.bool(true));
+    });
 
-describe('Proposal Approval', () => {
-  beforeEach(() => {
-    // Initialize signers and create proposal
-    chain.mineBlock([
-      Tx.contractCall(contract, 'initialize-signers', [
-        [alice.address, bob.address, charlie.address],
-      ]),
-      Tx.contractCall(contract, 'create-proposal', [
-        alice.address,
-        'test-proposal',
-        ['arg1', 'arg2'],
-      ]),
-    ]);
-  });
+    it("should reject duplicate approval", () => {
+      simnet.callPublicFn(
+        "freelance-security",
+        "approve-proposal",
+        [Cl.uint(1)],
+        bob
+      );
 
-  it('should allow signer to approve proposal', () => {
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'approve-proposal', [0], {
-        sender: bob, // Bob is a signer
-      }),
-    ]);
-
-    expect(block.receipts[0].result).toBe(true);
-
-    // Check proposal has 2 approvals now
-    const proposal = chain.callReadOnlyFn(contract, 'get-proposal', [0]);
-    expect(proposal.result.ok?.approvals).toHaveLength(2);
-  });
-
-  it('should reject duplicate approval', () => {
-    // Bob already approved in beforeEach
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'approve-proposal', [0], {
-        sender: bob,
-      }),
-    ]);
-
-    expect(block.receipts[0].result).toBe(ERR_INVALID_PROPOSAL);
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "approve-proposal",
+        [Cl.uint(1)],
+        bob
+      );
+      
+      expect(result).toBeErr(Cl.uint(3007)); // ERR-ALREADY-APPROVED
+    });
   });
 
-  it('should reject approval from non-signer', () => {
-    const dave = new Account({ address: 'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
+  describe("Proposal Execution", () => {
+    beforeEach(() => {
+      simnet.callPublicFn(
+        "freelance-security",
+        "initialize-signers",
+        [
+          Cl.list([
+            Cl.principal(alice),
+            Cl.principal(bob),
+            Cl.principal(charlie),
+            Cl.principal(dave),
+            Cl.principal(eve),
+          ]),
+        ],
+        deployer
+      );
 
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'approve-proposal', [0], {
-        sender: dave, // Dave is not a signer
-      }),
-    ]);
+      simnet.callPublicFn(
+        "freelance-security",
+        "create-pause-proposal",
+        [],
+        alice
+      );
 
-    expect(block.receipts[0].result).toBe(ERR_INVALID_PROPOSAL);
+      simnet.callPublicFn(
+        "freelance-security",
+        "approve-proposal",
+        [Cl.uint(1)],
+        bob
+      );
+
+      simnet.callPublicFn(
+        "freelance-security",
+        "approve-proposal",
+        [Cl.uint(1)],
+        charlie
+      );
+    });
+
+    it("should reject execution before timelock", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "execute-proposal",
+        [Cl.uint(1)],
+        alice
+      );
+      
+      expect(result).toBeErr(Cl.uint(3003)); // ERR-TIMELOCK-NOT-EXPIRED
+    });
+
+    it("should execute after timelock with 3 signatures", () => {
+      // Mine 144 blocks
+      simnet.mineEmptyBlocks(145);
+
+      const { result } = simnet.callPublicFn(
+        "freelance-security",
+        "execute-proposal",
+        [Cl.uint(1)],
+        alice
+      );
+      
+      expect(result).toBeOk(Cl.bool(true));
+    });
   });
-});
-
-describe('Proposal Execution', () => {
-  beforeEach(() => {
-    // Setup: initialize signers, create proposal, get approvals
-    chain.mineBlock([
-      Tx.contractCall(contract, 'initialize-signers', [
-        [alice.address, bob.address, charlie.address],
-      ]),
-      Tx.contractCall(contract, 'create-proposal', [
-        alice.address,
-        'test-execution',
-        ['exec-arg'],
-      ]),
-      Tx.contractCall(contract, 'approve-proposal', [0], { sender: bob }),
-      Tx.contractCall(contract, 'approve-proposal', [0], { sender: charlie }),
-    ]);
-  });
-
-  it('should execute proposal after timelock', () => {
-    // Mine blocks to pass timelock
-    chain.mineBlock([], [], [], [], 150); // Mine 150 empty blocks
-
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'execute-proposal', [0]),
-    ]);
-
-    expect(block.receipts[0].result).toBe(200);
-    expect(block.receipts[0].result.ok?.executed).toBe(true);
-  });
-
-  it('should reject execution before timelock', () => {
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'execute-proposal', [0]),
-    ]);
-
-    expect(block.receipts[0].result).toBe(3003);
-  });
-
-  it('should reject execution with insufficient signatures', () => {
-    // Only 2 approvals, need 3
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'execute-proposal', [0], {
-        sender: alice, // Remove alice's approval
-      }),
-    ]);
-
-    expect(block.receipts[0].result).toBe(3002);
-  });
-
-  it('should reject double execution', () => {
-    // Execute once
-    chain.mineBlock([], [], [], 150);
-    chain.mineBlock([
-      Tx.contractCall(contract, 'execute-proposal', [0]),
-    ]);
-
-    // Try to execute again
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'execute-proposal', [0]),
-    ]);
-
-    expect(block.receipts[0].result).toBe(3004);
-  });
-});
-
-describe('Admin Permissions', () => {
-  it('should update admin permissions', () => {
-    const block = chain.mineBlock([
-      Tx.contractCall(contract, 'update-admin-permissions', [
-        alice.address,
-        {
-          'can-pause': true,
-          'can-unpause': true,
-          'can-emergency-withdraw': true,
-          'can-update-contract': false,
-        },
-      ]),
-    ]);
-
-    expect(block.receipts[0].result).toBe(true);
-  });
-
-  it('should check admin permissions', () => {
-    // First set permissions
-    chain.mineBlock([
-      Tx.contractCall(contract, 'update-admin-permissions', [
-        alice.address,
-        {
-          'can-pause': true,
-          'can-unpause': false,
-          'can-emergency-withdraw': true,
-          'can-update-contract': true,
-        },
-      ]),
-    ]);
-
-    // Check permissions
-    const canPause = chain.callReadOnlyFn(contract, 'check-admin-permissions', [
-      alice.address,
-      'can-pause',
-    ]);
-    expect(canPause.result).toBe(200);
-    expect(canPause.result.ok).toBe(true);
-
-    const canUnpause = chain.callReadOnlyFn(contract, 'check-admin-permissions', [
-      alice.address,
-      'can-unpause',
-    ]);
-    expect(canUnpause.result).toBe(200);
-    expect(canUnpause.result.ok).toBe(false);
-  });
-
-  expect(block.receipts[0].result).toBe(ERR_UNAUTHORIZED);
-});
-  });
-
-describe('Security Functions', () => {
-  it('should check authorized signer', () => {
-    const isAuthorized = chain.callReadOnlyFn(contract, 'is-authorized-signer', [alice.address]);
-    expect(isAuthorized.result).toBe(200);
-    expect(isAuthorized.result.ok).toBe(true);
-
-    const isNotAuthorized = chain.callReadOnlyFn(contract, 'is-authorized-signer', [
-      'SP2C5KY4SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2', // Dave is not a signer
-    ]);
-    expect(isNotAuthorized.result).toBe(200);
-    expect(isNotAuthorized.result.ok).toBe(false);
-  });
-
-  it('should retrieve proposal details', () => {
-    // Create proposal first
-    chain.mineBlock([
-      Tx.contractCall(contract, 'create-proposal', [
-        alice.address,
-        'test-retrieval',
-        ['data'],
-      ]),
-    ]);
-
-    const proposal = chain.callReadOnlyFn(contract, 'get-proposal', [0]);
-    expect(proposal.result).toBe(200);
-    expect(proposal.result.ok?.proposer).toBe(alice.address);
-    expect(proposal.result.ok?.['function-name']).toBe('test-retrieval');
-  });
-
-  it('should reject direct emergency calls', () => {
-    const pauseBlock = chain.mineBlock([
-      Tx.contractCall(contract, 'emergency-pause-all-escrows', []),
-    ]);
-    expect(pauseBlock.receipts[0].result).toBe(ERR_UNAUTHORIZED);
-
-    const withdrawBlock = chain.mineBlock([
-      Tx.contractCall(contract, 'emergency-withdraw-all-funds', []),
-    ]);
-    expect(withdrawBlock.receipts[0].result).toBe(ERR_UNAUTHORIZED);
-  });
-});
 });

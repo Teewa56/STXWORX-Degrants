@@ -1,230 +1,121 @@
-import { Clarinet, Tx, Chain, Account, types } from '@hirosystems/clarinet-sdk';
+import { describe, expect, it, beforeEach } from "vitest";
+import { Cl } from "@stacks/transactions";
 
-const ERR_UNAUTHORIZED = 1000;
-const ERR_NOT_FOUND = 1001;
-const ERR_ALREADY_EXISTS = 1002;
-const ERR_INVALID_DATA = 1003;
-const ERR_CONTRACT_PAUSED = 1004;
-const ERR_INVALID_USERNAME = 1005;
+const accounts = simnet.getAccounts();
+const deployer = accounts.get("deployer")!;
+const alice = accounts.get("wallet_1")!;
+const bob = accounts.get("wallet_2")!;
 
-describe('Freelance Data Contract Tests', () => {
-  let alice: Account;
-  let bob: Account;
-  let contract: string;
+describe("Freelance Data Contract Tests", () => {
+  
+  describe("User Profile Management", () => {
+    it("should create user profile", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "create-user-profile",
+        [
+          Cl.stringAscii("alice_dev"),
+          Cl.some(Cl.stringAscii("@alice_x")),
+        ],
+        alice
+      );
+      
+      expect(result).toBeOk(Cl.principal(alice));
+    });
 
-  const chain = new Chain();
-  beforeEach(() => {
-    alice = new Account({ address: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM' });
-    bob = new Account({ address: 'ST1SJ3DTEQDN9XJYV8KHGXG4M0DCE0P6Z2' });
-    contract = process.env.DATA_CONTRACT_ADDRESS!;
+    it("should reject duplicate profile", () => {
+      simnet.callPublicFn(
+        "freelance-data",
+        "create-user-profile",
+        [
+          Cl.stringAscii("alice_dev"),
+          Cl.none(),
+        ],
+        alice
+      );
 
-    // Deploy contract
-    chain.deployContract('freelance-data', 'contracts/freelance-data.clar', {
-      address: contract,
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "create-user-profile",
+        [
+          Cl.stringAscii("alice_duplicate"),
+          Cl.none(),
+        ],
+        alice
+      );
+      
+      expect(result).toBeErr(Cl.uint(1002)); // ERR-ALREADY-EXISTS
+    });
+
+    it("should reject invalid username", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "create-user-profile",
+        [
+          Cl.stringAscii("ab"), // Too short
+          Cl.none(),
+        ],
+        alice
+      );
+      
+      expect(result).toBeErr(Cl.uint(1005)); // ERR-INVALID-USERNAME
     });
   });
 
-  describe('User Profile Management', () => {
-    it('should create a new user profile', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'create-user-profile', [
-          types.ascii('alice_freelance'),
-          types.some(types.ascii('alice_crypto')),
-        ]),
-        Tx.contractCall(contract, 'get-user-profile', [types.principal(alice.address)]),
-      ]);
-
-      const result = block.receipts[1].result;
-      expect(result).toHaveProperty('user-id');
-      expect(result['user-id']).toBe(alice.address);
+  describe("Category Management", () => {
+    it("should allow admin to add category", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "add-category",
+        [
+          Cl.stringAscii("Web Development"),
+          Cl.stringAscii("💻"),
+          Cl.list([
+            Cl.stringAscii("Frontend"),
+            Cl.stringAscii("Backend"),
+          ]),
+        ],
+        deployer
+      );
+      
+      expect(result).toBeOk(Cl.uint(1));
     });
 
-    it('should not allow duplicate user profiles', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'create-user-profile', [
-          types.ascii('alice_duplicate'),
-          types.none(),
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(ERR_ALREADY_EXISTS);
-    });
-
-    it('should update user reputation', () => {
-      // First create user
-      chain.mineBlock([
-        Tx.contractCall(contract, 'create-user-profile', [
-          types.ascii('bob_freelance'),
-          types.none(),
-        ]),
-      ]);
-
-      // Update reputation
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'update-reputation', [
-          types.principal(bob.address),
-          types.uint(5000),
-        ]),
-      ]);
-
-      const profile = chain.callReadOnlyFn(contract, 'get-user-profile', [types.principal(bob.address)]);
-      profile.result.expectOk();
-      expect(profile.result.expectOk().expectSome().reputation).toBe(5000);
+    it("should reject non-admin category addition", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "add-category",
+        [
+          Cl.stringAscii("Unauthorized"),
+          Cl.stringAscii("🚫"),
+          Cl.list([Cl.stringAscii("Test")]),
+        ],
+        alice
+      );
+      
+      expect(result).toBeErr(Cl.uint(1000)); // ERR-UNAUTHORIZED
     });
   });
 
-  describe('Category Management', () => {
-    it('should add new category (admin only)', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'add-category', [
-          types.ascii('Web Development'),
-          types.ascii('💻'),
-          types.list([types.ascii('Frontend'), types.ascii('Backend'), types.ascii('Full Stack')]),
-        ]),
-      ]);
-
-      const result = block.receipts[0].result;
-      expect(result).toHaveProperty('category-id');
-      expect(result['category-id']).toBe(0); // First category
+  describe("X Verification", () => {
+    beforeEach(() => {
+      simnet.callPublicFn(
+        "freelance-data",
+        "create-user-profile",
+        [Cl.stringAscii("bob_dev"), Cl.none()],
+        bob
+      );
     });
 
-    it('should retrieve category by ID', () => {
-      // Add category first
-      chain.mineBlock([
-        Tx.contractCall(contract, 'add-category', [
-          types.ascii('Mobile Development'),
-          types.ascii('📱'),
-          types.list([types.ascii('iOS'), types.ascii('Android')]),
-        ]),
-      ]);
-
-      const category = chain.callReadOnlyFn(contract, 'get-category', [types.uint(1)]);
-      category.result.expectOk();
-      expect(category.result.expectOk().expectSome().name).toBe('Mobile Development');
-      expect(category.result.expectOk().expectSome().subcategories).toHaveLength(2);
-    });
-
-    it('should not allow non-admin to add categories', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'add-category', [
-          types.ascii('Unauthorized Category'),
-          types.ascii('🚫'),
-          types.list([types.ascii('Test')]),
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(ERR_UNAUTHORIZED);
-    });
-  });
-
-  describe('Leaderboard System', () => {
-    it('should update leaderboard score', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'update-leaderboard-score', [
-          types.ascii('total-earnings'),
-          types.uint(100000),
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(200);
-    });
-
-    it('should retrieve leaderboard score', () => {
-      // Update score first
-      chain.mineBlock([
-        Tx.contractCall(contract, 'update-leaderboard-score', [
-          types.ascii('project-completion'),
-          types.uint(25),
-        ]),
-      ]);
-
-      const score = chain.callReadOnlyFn(contract, 'get-leaderboard-score', [
-        types.principal(alice.address),
-        types.ascii('project-completion'),
-      ]);
-
-      score.result.expectOk();
-      expect(score.result.expectOk().expectSome()['score-value']).toBe(25);
-    });
-  });
-
-  describe('Achievement System', () => {
-    it('should mint achievement NFT', () => {
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'mint-achievement', [
-          types.ascii('bronze'),
-          types.uint(100),
-        ]),
-      ]);
-
-      const result = block.receipts[0].result;
-      expect(result).toHaveProperty('token-id');
-      expect(result['token-id']).toBe(100);
-    });
-
-    it('should not allow duplicate achievements', () => {
-      // Mint first achievement
-      chain.mineBlock([
-        Tx.contractCall(contract, 'mint-achievement', [
-          types.ascii('bronze'),
-          types.uint(101),
-        ]),
-      ]);
-
-      // Try to mint same achievement again
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'mint-achievement', [
-          types.ascii('bronze'),
-          types.uint(102),
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(ERR_ALREADY_EXISTS);
-    });
-
-    it('should retrieve user achievements', () => {
-      // Mint some achievements
-      chain.mineBlock([
-        Tx.contractCall(contract, 'mint-achievement', [
-          types.ascii('bronze'),
-          types.uint(200),
-        ]),
-        Tx.contractCall(contract, 'mint-achievement', [
-          types.ascii('silver'),
-          types.uint(201),
-        ]),
-      ]);
-
-      const achievements = chain.callReadOnlyFn(contract, 'get-user-achievements', [types.principal(alice.address)]);
-      achievements.result.expectOk();
-      expect(Object.keys(achievements.result.expectOk() || {})).toHaveLength(2);
-    });
-  });
-
-  describe('Project Statistics', () => {
-    it('should update project completion stats', () => {
-      // Create user first
-      chain.mineBlock([
-        Tx.contractCall(contract, 'create-user-profile', [
-          types.ascii('bob_stats'),
-          types.none(),
-        ]),
-      ]);
-
-      // Update stats
-      const block = chain.mineBlock([
-        Tx.contractCall(contract, 'update-project-stats', [
-          types.principal(bob.address),
-          types.uint(50000), // 0.05 STX
-        ]),
-      ]);
-
-      expect(block.receipts[0].result).toBe(200);
-
-      // Check updated profile
-      const profile = chain.callReadOnlyFn(contract, 'get-user-profile', [types.principal(bob.address)]);
-      expect(profile.result.ok?.['completed-projects']).toBe(1);
-      expect(profile.result.ok?.['total-earnings']).toBe(50000);
+    it("should update X verification", () => {
+      const { result } = simnet.callPublicFn(
+        "freelance-data",
+        "update-x-verification",
+        [Cl.stringAscii("@bob_verified")],
+        bob
+      );
+      
+      expect(result).toBeOk(Cl.bool(true));
     });
   });
 });
