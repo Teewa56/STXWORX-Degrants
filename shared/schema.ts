@@ -269,12 +269,24 @@ export const xIntegrations = pgTable("x_integrations", {
   verified: boolean("verified").default(false).notNull(),
   followerCount: integer("follower_count").default(0).notNull(),
   engagementScore: integer("engagement_score").default(0).notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at"),
   lastSync: timestamp("last_sync").defaultNow().notNull(),
 });
 
 export const insertXIntegrationSchema = createInsertSchema(xIntegrations).omit({
   id: true,
   lastSync: true,
+});
+
+export const updateXIntegrationSchema = z.object({
+  verified: z.boolean().optional(),
+  followerCount: z.number().optional(),
+  engagementScore: z.number().optional(),
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
+  expiresAt: z.date().optional(),
 });
 
 export type InsertXIntegration = z.infer<typeof insertXIntegrationSchema>;
@@ -300,3 +312,46 @@ export const insertDaoTransactionSchema = createInsertSchema(daoTransactions).om
 
 export type InsertDaoTransaction = z.infer<typeof insertDaoTransactionSchema>;
 export type DaoTransaction = typeof daoTransactions.$inferSelect;
+
+// DAO Proposals table for multi-sig persistent storage
+export const daoProposals = pgTable("dao_proposals", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  proposerId: varchar("proposer_id", { length: 36 }).references(() => users.id).notNull(),
+  targetContract: text("target_contract").notNull(),
+  functionName: text("function_name").notNull(),
+  functionArgs: json("function_args").notNull().$type<string[]>(),
+  description: text("description").notNull(),
+  status: text("status").default("pending").notNull(), // pending, ready, executed, failed, cancelled
+  onChainId: integer("on_chain_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  executeAt: timestamp("execute_at").notNull(),
+  executionTxId: text("execution_tx_id"),
+  executionResult: json("execution_result"),
+});
+
+export const insertDaoProposalSchema = createInsertSchema(daoProposals).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  executionTxId: true,
+  executionResult: true,
+});
+
+export type InsertDaoProposal = z.infer<typeof insertDaoProposalSchema>;
+export type DaoProposal = typeof daoProposals.$inferSelect;
+
+// DAO Approvals table for multi-sig signers
+export const daoApprovals = pgTable("dao_approvals", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id", { length: 36 }).references(() => daoProposals.id).notNull(),
+  signerId: varchar("signer_id", { length: 36 }).references(() => users.id).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const insertDaoApprovalSchema = createInsertSchema(daoApprovals).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertDaoApproval = z.infer<typeof insertDaoApprovalSchema>;
+export type DaoApproval = typeof daoApprovals.$inferSelect;

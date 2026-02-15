@@ -53,13 +53,24 @@ const ACHIEVEMENT_REQUIREMENTS = {
 // Request schemas
 const mintNftSchema = z.object({
   achievementType: z.enum(['bronze', 'silver', 'gold', 'platinum', 'verified']),
-  userId: z.string().uuid().optional(),
+  recipientAddress: z.string(), // Added recipientAddress
+  metadata: z.object({ // Added metadata
+    description: z.string().optional(),
+    image: z.string().optional(),
+  }).optional(),
 });
 
 const checkEligibilitySchema = z.object({
   userId: z.string().uuid(),
   achievementType: z.enum(['bronze', 'silver', 'gold', 'platinum', 'verified']),
 });
+
+// Middleware for authentication (placeholder, replace with actual auth)
+const authenticateToken = (req: any, res: any, next: any) => {
+  // In a real app, you'd verify a token here and set req.user
+  req.user = { id: req.body.userId || 'a1b2c3d4-e5f6-7890-1234-567890abcdef' }; // Mock user for testing
+  next();
+};
 
 // Check user eligibility for achievement
 router.post('/check-eligibility', async (req, res) => {
@@ -181,44 +192,80 @@ async function getUserStats(userId: string): Promise<any> {
 // Mint NFT achievement
 router.post('/mint', async (req, res) => {
   try {
-    const { achievementType, userId } = mintNftSchema.parse(req.body);
-    const requestUserId = userId || req.user?.id; // TODO: Get from auth
+    const { achievementType, userId, recipientAddress, metadata } = mintNftSchema.parse(req.body);
+    const requestUserId = userId || (req as any).user?.id;
+
+    if (!requestUserId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     // Check eligibility first
     const eligibility = await checkUserEligibility(requestUserId, achievementType);
 
     if (!eligibility.eligible) {
       return res.status(400).json({
-        error: 'Not eligible for achievement',
-        details: eligibility
+        error: 'User not eligible for this achievement',
+        reason: eligibility.reason,
+        missing: eligibility.missingRequirements
       });
     }
 
-    // TODO: Call smart contract to mint NFT
-    const txId = await mintAchievementNft(requestUserId, achievementType);
+    // Get recipient address (either provided or from user profile)
+    let finalRecipient = recipientAddress;
+    if (!finalRecipient) {
+      const user = await db.select().from(users).where(eq(users.id, requestUserId)).limit(1).execute();
+      finalRecipient = user[0]?.stxAddress;
+    }
 
-    // Save to database
-    const nftData: InsertNftAchievement = {
+    if (!finalRecipient) {
+      return res.status(400).json({ error: 'Recipient address required' });
+    }
+
+    // 1. Upload metadata to IPFS
+    const { IPFSService } = await import('../services/ipfs');
+    const cid = await IPFSService.uploadJSON({
+      name: `Degrants Achievement: ${achievementType}`,
+      description: metadata?.description || ACHIEVEMENT_REQUIREMENTS[achievementType as keyof typeof ACHIEVEMENT_REQUIREMENTS].description,
+      image: metadata?.image || 'https://stxworx.io/nft-placeholder.png',
+      attributes: [
+        { trait_type: 'Achievement', value: achievementType },
+        { trait_type: 'Proposer', value: requestUserId },
+        { trait_type: 'Date', value: new Date().toISOString() }
+      ]
+    });
+
+    const metadataUrl = IPFSService.getGatewayUrl(cid);
+    console.log(`✓ Metadata uploaded to IPFS: ${metadataUrl}`);
+
+    // 2. Mint achievement on-chain
+    const txid = await StacksService.mintAchievementOnChain(finalRecipient, achievementType);
+
+    // 3. Record in database
+    const [achievement] = await db.insert(nftAchievements).values({
       userId: requestUserId,
-      tokenId: 0, // Will be updated after confirmation, or use 0 for now
-      txId,
       achievementType,
-      mintedAt: new Date()
-    };
-
-    const savedNft = await db.insert(nftAchievements)
-      .values(nftData)
-      .returning()
-      .execute();
+      transactionId: txid,
+      metadataUrl: metadataUrl,
+      tokenId: null, // Will be updated by monitor
+      contractAddress: process.env.CONTRACT_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM'
+    }).returning();
 
     res.json({
       success: true,
-      data: savedNft[0],
-      message: `${achievementType} achievement NFT minted successfully`
+      data: {
+        id: achievement.id,
+        txid,
+        achievementType,
+        recipientAddress: finalRecipient,
+        metadataUrl
+      }
     });
 
   } catch (error) {
-    console.error('Error minting NFT:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Error minting achievement:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

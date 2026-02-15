@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject } from "@shared/schema";
+import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject, type XIntegration, type InsertXIntegration, type DaoProposal, type InsertDaoProposal, type DaoApproval, type InsertDaoApproval, type AdminAction, type InsertAdminAction } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -29,6 +29,23 @@ export interface IStorage {
   getProjectsByFreelancer(freelancerAddress: string): Promise<Project[]>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined>;
+
+  // X Integration methods
+  getXIntegration(userId: string): Promise<XIntegration | undefined>;
+  updateXIntegration(userId: string, updates: Partial<XIntegration>): Promise<XIntegration | undefined>;
+  upsertXIntegration(data: InsertXIntegration): Promise<XIntegration>;
+  deleteXIntegration(userId: string): Promise<void>;
+
+  // DAO Multi-sig methods
+  getDaoProposals(status?: string): Promise<DaoProposal[]>;
+  getDaoProposal(id: string): Promise<{ proposal: DaoProposal; approvals: DaoApproval[] } | undefined>;
+  createDaoProposal(proposal: InsertDaoProposal): Promise<DaoProposal>;
+  updateDaoProposal(id: string, updates: Partial<DaoProposal>): Promise<DaoProposal | undefined>;
+  addDaoApproval(approval: InsertDaoApproval): Promise<DaoApproval>;
+  getDaoApprovals(proposalId: string): Promise<DaoApproval[]>;
+
+  // Admin action methods
+  createAdminAction(action: InsertAdminAction): Promise<AdminAction>;
 }
 
 // PostgreSQL Storage Implementation
@@ -208,6 +225,107 @@ export class PostgresStorage implements IStorage {
       .returning();
     return result[0];
   }
+
+  // X Integration methods
+  async getXIntegration(userId: string): Promise<XIntegration | undefined> {
+    const { xIntegrations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    if (!userId) return undefined;
+    const result = await this.db.select().from(xIntegrations).where(eq(xIntegrations.userId, userId));
+    return result[0];
+  }
+
+  async updateXIntegration(userId: string, updates: Partial<XIntegration>): Promise<XIntegration | undefined> {
+    const { xIntegrations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const [result] = await this.db.update(xIntegrations)
+      .set({ ...updates, lastSync: new Date() })
+      .where(eq(xIntegrations.userId, userId))
+      .returning();
+    return result;
+  }
+
+  async upsertXIntegration(insertData: InsertXIntegration): Promise<XIntegration> {
+    const { xIntegrations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+
+    if (!insertData.userId) throw new Error("userId is required for X integration");
+
+    // Check if exists
+    const existing = await this.getXIntegration(insertData.userId);
+
+    if (existing) {
+      const result = await this.db.update(xIntegrations)
+        .set({ ...insertData, lastSync: new Date() })
+        .where(eq(xIntegrations.userId, insertData.userId))
+        .returning();
+      return result[0];
+    } else {
+      const result = await this.db.insert(xIntegrations).values({
+        ...insertData,
+        verified: insertData.verified ?? false,
+        followerCount: insertData.followerCount ?? 0,
+        engagementScore: insertData.engagementScore ?? 0,
+      }).returning();
+      return result[0];
+    }
+  }
+
+  async deleteXIntegration(userId: string): Promise<void> {
+    const { xIntegrations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    await this.db.delete(xIntegrations).where(eq(xIntegrations.userId, userId));
+  }
+
+  // DAO Multi-sig methods
+  async getDaoProposals(status?: string): Promise<DaoProposal[]> {
+    const { daoProposals } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    if (status) {
+      return await this.db.select().from(daoProposals).where(eq(daoProposals.status, status));
+    }
+    return await this.db.select().from(daoProposals);
+  }
+
+  async getDaoProposal(id: string): Promise<{ proposal: DaoProposal; approvals: DaoApproval[] } | undefined> {
+    const { daoProposals, daoApprovals } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const [proposal] = await this.db.select().from(daoProposals).where(eq(daoProposals.id, id));
+    if (!proposal) return undefined;
+    const approvals = await this.db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, id));
+    return { proposal, approvals };
+  }
+
+  async createDaoProposal(proposal: InsertDaoProposal): Promise<DaoProposal> {
+    const { daoProposals } = await import("@shared/schema");
+    const [result] = await this.db.insert(daoProposals).values(proposal).returning();
+    return result;
+  }
+
+  async updateDaoProposal(id: string, updates: Partial<DaoProposal>): Promise<DaoProposal | undefined> {
+    const { daoProposals } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const [result] = await this.db.update(daoProposals).set(updates).where(eq(daoProposals.id, id)).returning();
+    return result;
+  }
+
+  async addDaoApproval(approval: InsertDaoApproval): Promise<DaoApproval> {
+    const { daoApprovals } = await import("@shared/schema");
+    const [result] = await this.db.insert(daoApprovals).values(approval).returning();
+    return result;
+  }
+
+  async getDaoApprovals(proposalId: string): Promise<DaoApproval[]> {
+    const { daoApprovals } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    return await this.db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, proposalId));
+  }
+
+  async createAdminAction(action: InsertAdminAction): Promise<AdminAction> {
+    const { adminActions } = await import("@shared/schema");
+    const [result] = await this.db.insert(adminActions).values(action).returning();
+    return result;
+  }
 }
 
 // In-Memory Storage Implementation (for development/fallback)
@@ -216,12 +334,20 @@ export class MemStorage implements IStorage {
   private categories: Map<string, Category>;
   private escrows: Map<string, Escrow>;
   private projects: Map<string, Project>;
+  private xIntegrations: Map<string, XIntegration>;
+  private daoProposals: Map<string, DaoProposal>;
+  private daoApprovals: Map<string, DaoApproval>;
+  private adminActions: Map<string, AdminAction>;
 
   constructor() {
     this.users = new Map();
     this.categories = new Map();
     this.escrows = new Map();
     this.projects = new Map();
+    this.xIntegrations = new Map();
+    this.daoProposals = new Map();
+    this.daoApprovals = new Map();
+    this.adminActions = new Map();
 
     this.seedCategories();
   }
@@ -543,6 +669,115 @@ export class MemStorage implements IStorage {
     };
     this.projects.set(id, updated);
     return updated;
+  }
+
+  // X Integration methods
+  async getXIntegration(userId: string): Promise<XIntegration | undefined> {
+    return Array.from(this.xIntegrations.values()).find(x => x.userId === userId);
+  }
+
+  async updateXIntegration(userId: string, updates: Partial<XIntegration>): Promise<XIntegration | undefined> {
+    const existing = await this.getXIntegration(userId);
+    if (!existing) return undefined;
+
+    const updated: XIntegration = {
+      ...existing,
+      ...updates,
+      lastSync: new Date(),
+    };
+    this.xIntegrations.set(updated.id, updated);
+    return updated;
+  }
+
+  async upsertXIntegration(insertData: InsertXIntegration): Promise<XIntegration> {
+    if (!insertData.userId) throw new Error("userId is required for X integration");
+    const existing = await this.getXIntegration(insertData.userId);
+    const id = existing?.id || randomUUID();
+
+    const integration: XIntegration = {
+      ...insertData,
+      id,
+      userId: insertData.userId,
+      handle: insertData.handle,
+      verified: insertData.verified ?? existing?.verified ?? false,
+      followerCount: insertData.followerCount ?? existing?.followerCount ?? 0,
+      engagementScore: insertData.engagementScore ?? existing?.engagementScore ?? 0,
+      accessToken: insertData.accessToken || existing?.accessToken || null,
+      refreshToken: insertData.refreshToken || existing?.refreshToken || null,
+      expiresAt: insertData.expiresAt || existing?.expiresAt || null,
+      lastSync: new Date(),
+    };
+
+    this.xIntegrations.set(id, integration);
+    return integration;
+  }
+
+  async deleteXIntegration(userId: string): Promise<void> {
+    const existing = await this.getXIntegration(userId);
+    if (existing) {
+      this.xIntegrations.delete(existing.id);
+    }
+  }
+
+  // DAO Multi-sig methods
+  async getDaoProposals(status?: string): Promise<DaoProposal[]> {
+    const all = Array.from(this.daoProposals.values());
+    if (status) return all.filter(p => p.status === status);
+    return all;
+  }
+
+  async getDaoProposal(id: string): Promise<{ proposal: DaoProposal; approvals: DaoApproval[] } | undefined> {
+    const proposal = this.daoProposals.get(id);
+    if (!proposal) return undefined;
+    const approvals = Array.from(this.daoApprovals.values()).filter(a => a.proposalId === id);
+    return { proposal, approvals };
+  }
+
+  async createDaoProposal(proposal: InsertDaoProposal): Promise<DaoProposal> {
+    const id = randomUUID();
+    const result: DaoProposal = {
+      ...proposal,
+      id,
+      status: "pending",
+      createdAt: new Date(),
+      executionTxId: null,
+      executionResult: null,
+      functionArgs: proposal.functionArgs as string[],
+    };
+    this.daoProposals.set(id, result);
+    return result;
+  }
+
+  async updateDaoProposal(id: string, updates: Partial<DaoProposal>): Promise<DaoProposal | undefined> {
+    const existing = this.daoProposals.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...updates };
+    this.daoProposals.set(id, updated);
+    return updated;
+  }
+
+  async addDaoApproval(approval: InsertDaoApproval): Promise<DaoApproval> {
+    const id = randomUUID();
+    const result: DaoApproval = { ...approval, id, timestamp: new Date() };
+    this.daoApprovals.set(id, result);
+    return result;
+  }
+
+  async getDaoApprovals(proposalId: string): Promise<DaoApproval[]> {
+    return Array.from(this.daoApprovals.values()).filter(a => a.proposalId === proposalId);
+  }
+
+  async createAdminAction(action: InsertAdminAction): Promise<AdminAction> {
+    const id = randomUUID();
+    const result: AdminAction = {
+      ...action,
+      id,
+      timestamp: new Date(),
+      adminId: action.adminId ?? null,
+      ipAddress: action.ipAddress ?? null,
+    };
+    this.adminActions.set(id, result);
+    return result;
   }
 }
 

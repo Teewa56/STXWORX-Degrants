@@ -41,6 +41,14 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+
+  // Start blockchain transaction monitor
+  const { TransactionMonitor } = await import('./services/tx-monitor');
+  TransactionMonitor.start();
+  // Start X profile sync service
+  const { XSyncService } = await import('./services/x-sync');
+  XSyncService.start();
+
   registerProjectRoutes(app); // Register milestone-based project routes
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

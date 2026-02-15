@@ -6,6 +6,7 @@ import {
     Cl,
 } from '@stacks/transactions';
 import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
+import { type DaoProposal } from '@shared/schema';
 
 // Load environment variables
 const STX_NETWORK = process.env.STX_NETWORK || 'testnet';
@@ -67,5 +68,42 @@ export class StacksService {
             'verified': 5
         };
         return mapping[type] || 0;
+    }
+
+    static async executeProposalOnChain(onChainId: number): Promise<string> {
+        if (!STX_MINTER_KEY) {
+            throw new Error('STX_MINTER_KEY not configured');
+        }
+
+        const network = this.getNetwork();
+
+        const txOptions = {
+            contractAddress: CONTRACT_ADDRESS, // Assuming multi-sig is at same address or configure separately
+            contractName: 'freelance-security',
+            functionName: 'execute-proposal',
+            functionArgs: [
+                Cl.uint(onChainId)
+            ],
+            senderKey: STX_MINTER_KEY,
+            validateWithAbi: true,
+            network,
+            anchorMode: AnchorMode.Any,
+            postConditionMode: PostConditionMode.Allow,
+        };
+
+        try {
+            const transaction = await makeContractCall(txOptions);
+            const response = await broadcastTransaction({ transaction, network });
+
+            if ('error' in response && response.error) {
+                throw new Error(`Broadcast error: ${response.error}`);
+            }
+
+            const txid = (response as any).txid || response;
+            return typeof txid === 'string' ? txid : (txid as any).toString();
+        } catch (error) {
+            console.error('Error in Stacks multi-sig execution:', error);
+            throw error;
+        }
     }
 }

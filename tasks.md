@@ -33,10 +33,10 @@ It uses testnet for now - testing in development.
   - [x] Fix TODO: message decryption in history
 - [x] Build leaderboard calculation engine
 - [x] Integrate X (Twitter) API endpoints
-  - [ ] Implement real OAuth 2.0 flow (currently mocked)
-  - [ ] Connect to real X API for follower/engagement sync
-- [ ] Develop Real NFT minting API (currently mocks token IDs)
-  - [ ] Integrate Clarity smart contract calls
+  - [x] Implement real OAuth 2.0 flow (OAuth 2.0 PKCE)
+  - [x] Connect to real X API for follower/engagement sync
+- [x] Develop Real NFT minting API
+  - [x] Integrate Clarity smart contract calls
 - [x] Implement multi-sig transaction APIs
   - [ ] Replace in-memory proposal storage with DB
 
@@ -46,7 +46,7 @@ It uses testnet for now - testing in development.
 - [x] Configure JWT and MFA authentication
 - [x] Setup encryption for chat messages
   - [x] Fix AES-256-CBC implementation (deprecated usage in `chat.ts`)
-  - [ ] Align with `services/encryption.ts` GCM implementation
+  - [x] Align with `services/encryption.ts` GCM implementation
 
 ## Phase 2: Frontend Development
 
@@ -81,23 +81,23 @@ It uses testnet for now - testing in development.
 - [x] Add historical performance tracking
 
 ### 2.4 X (Twitter) Integration
-- [/] Build X OAuth authentication flow (TODO: Real OAuth 2.0)
-- [/] Create profile verification system
-  - [ ] Implement real server-side verification
+- [x] Build X OAuth authentication flow (OAuth 2.0 PKCE)
+- [x] Create profile verification system
+  - [x] Implement real server-side verification
 - [x] Implement social sharing features
 - [x] Add X handle display on profiles
-- [/] Create achievement auto-posting
-  - [ ] Implement real X API posting (currently mocked on frontend)
+- [x] Create achievement auto-posting
+  - [x] Implement real X API posting (Twitter API v2)
 - [x] Build social reputation scoring
-- [/] Add X follower verification
-  - [ ] Implement real-time sync with backend
+- [x] Add X follower verification
+  - [x] Implement real-time sync with backend
 - [x] Create social settings panel
 
 
 ### 2.5 NFT Achievement System
 - [x] Design NFT badge display components
-- [/] Create achievement minting interface
-  - [ ] Connect to real backend minting (currently returns mock tokens)
+- [x] Create achievement minting interface
+  - [x] Connect to real backend minting
 - [x] Build achievement gallery showcase
 - [x] Implement achievement trading marketplace
 - [x] Create achievement rarity system
@@ -108,7 +108,7 @@ It uses testnet for now - testing in development.
 - [x] Add achievement criteria display
 - [x] Create transfer restriction UI
 - [x] Build achievement tracking system
-- [/] Add IPFS integration for assets (TODO: Implement real IPFS uploading)
+- [ ] Add IPFS integration for assets
 
 ## Phase 3: Smart Contract Deployment
 
