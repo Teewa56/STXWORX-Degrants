@@ -75,9 +75,8 @@ Before you begin, ensure you have the following installed:
    npm --version
    ```
 
-3. **PostgreSQL** (v14 or higher)
-   - For local development: [Download PostgreSQL](https://www.postgresql.org/download/)
-   - Or use [Neon](https://neon.tech) for serverless PostgreSQL
+3. **PostgreSQL** (Managed via [Neon](https://neon.tech))
+   - Sign up for a free account at [Neon](https://neon.tech) for serverless PostgreSQL.
 
 4. **Clarinet** (for smart contract development)
    ```bash
@@ -118,32 +117,8 @@ npm install
 
 ### Step 3: Database Setup
 
-#### Option A: Local PostgreSQL
-
-1. Create a database:
-   ```bash
-   psql -U postgres
-   CREATE DATABASE stx_freelance;
-   \q
-   ```
-
-2. Create `.env` file:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Update `.env` with your database credentials:
-   ```env
-   DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/stx_freelance
-   SESSION_SECRET=your-random-secret-key-here-min-32-chars
-   ```
-
-#### Option B: Neon (Cloud PostgreSQL)
-
-1. Sign up at [neon.tech](https://neon.tech)
-2. Create a new project
-3. Copy the connection string
-4. Update `.env`:
+1. Sign up at [neon.tech](https://neon.tech) and create a new project.
+2. Copy the connection string and update `.env`:
    ```env
    DATABASE_URL=postgresql://user:pass@region.neon.tech/dbname?sslmode=require
    SESSION_SECRET=your-random-secret-key-here-min-32-chars

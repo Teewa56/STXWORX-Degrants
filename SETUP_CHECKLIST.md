@@ -59,7 +59,7 @@ Use this checklist when setting up the repository for the first time or sharing 
 ### Prerequisites Installed
 - [ ] Node.js v18+ installed
 - [ ] npm or pnpm installed
-- [ ] PostgreSQL installed (or Neon account)
+- [ ] PostgreSQL managed via [Neon](https://neon.tech)
 - [ ] Clarinet installed
 - [ ] Hiro Wallet extension installed
 - [ ] Git installed and configured
@@ -68,7 +68,7 @@ Use this checklist when setting up the repository for the first time or sharing 
 - [ ] Repository cloned
 - [ ] Dependencies installed (`npm install`)
 - [ ] `.env` created from `.env.example`
-- [ ] Database URL configured in `.env`
+- [ ] Database URL configured in `.env` (Neon with `sslmode=require`)
 - [ ] Session secret generated and added to `.env`
 - [ ] Database initialized (`npm run db:setup`)
 
@@ -130,8 +130,8 @@ Use this checklist when setting up the repository for the first time or sharing 
 ## Common Issues to Check
 
 ### Database Issues
-- [ ] DATABASE_URL format is correct
-- [ ] Database server is running
+- [ ] DATABASE_URL format is correct (Neon + `sslmode=require`)
+- [ ] Neon project is active and accessible
 - [ ] Database migrations applied
 - [ ] Tables exist in database
 - [ ] Database user has proper permissions

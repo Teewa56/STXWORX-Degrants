@@ -6,7 +6,7 @@ This guide provides comprehensive instructions for setting up the STXWORX-Degran
 
 Ensure you have the following installed:
 - **Node.js** (v18+)
-- **PostgreSQL** (Local or [Neon](https://neon.tech))
+- **PostgreSQL** (Managed via [Neon](https://neon.tech))
 - **Clarinet** (Stacks smart contract toolchain)
 - **Bitcoin Wallet** (Browser extension wallet like leather or xverse for manual E2E tests)
 
@@ -23,7 +23,7 @@ Ensure you have the following installed:
 
 2. **Environment Configuration**
    Copy `.env.example` to `.env` and fill in:
-   - `DATABASE_URL`: Your PostgreSQL connection string.
+   - `DATABASE_URL`: Your Neon PostgreSQL connection string (ensure it includes `?sslmode=require`).
    - `SESSION_SECRET`: A secure 32+ char string.
    - `JWT_SECRET`: A secure 32+ char string.
 
