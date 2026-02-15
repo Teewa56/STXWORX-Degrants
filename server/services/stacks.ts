@@ -78,7 +78,7 @@ export class StacksService {
         const network = this.getNetwork();
 
         const txOptions = {
-            contractAddress: CONTRACT_ADDRESS, // Assuming multi-sig is at same address or configure separately
+            contractAddress: CONTRACT_ADDRESS,
             contractName: 'freelance-security',
             functionName: 'execute-proposal',
             functionArgs: [
@@ -103,6 +103,80 @@ export class StacksService {
             return typeof txid === 'string' ? txid : (txid as any).toString();
         } catch (error) {
             console.error('Error in Stacks multi-sig execution:', error);
+            throw error;
+        }
+    }
+
+    static async approveEscrowOnChain(projectId: number): Promise<string> {
+        if (!STX_MINTER_KEY) {
+            throw new Error('STX_MINTER_KEY not configured');
+        }
+
+        const network = this.getNetwork();
+
+        const txOptions = {
+            contractAddress: CONTRACT_ADDRESS,
+            contractName: 'freelance-logic',
+            functionName: 'approve-escrow',
+            functionArgs: [
+                Cl.uint(projectId)
+            ],
+            senderKey: STX_MINTER_KEY,
+            validateWithAbi: true,
+            network,
+            anchorMode: AnchorMode.Any,
+            postConditionMode: PostConditionMode.Allow,
+        };
+
+        try {
+            const transaction = await makeContractCall(txOptions);
+            const response = await broadcastTransaction({ transaction, network });
+
+            if ('error' in response && response.error) {
+                throw new Error(`Broadcast error: ${response.error}`);
+            }
+
+            const txid = (response as any).txid || response;
+            return typeof txid === 'string' ? txid : (txid as any).toString();
+        } catch (error) {
+            console.error('Error in Stacks escrow approval:', error);
+            throw error;
+        }
+    }
+
+    static async setPlatformPauseOnChain(paused: boolean): Promise<string> {
+        if (!STX_MINTER_KEY) {
+            throw new Error('STX_MINTER_KEY not configured');
+        }
+
+        const network = this.getNetwork();
+
+        const txOptions = {
+            contractAddress: CONTRACT_ADDRESS,
+            contractName: 'freelance-security',
+            functionName: 'set-paused',
+            functionArgs: [
+                Cl.bool(paused)
+            ],
+            senderKey: STX_MINTER_KEY,
+            validateWithAbi: true,
+            network,
+            anchorMode: AnchorMode.Any,
+            postConditionMode: PostConditionMode.Allow,
+        };
+
+        try {
+            const transaction = await makeContractCall(txOptions);
+            const response = await broadcastTransaction({ transaction, network });
+
+            if ('error' in response && response.error) {
+                throw new Error(`Broadcast error: ${response.error}`);
+            }
+
+            const txid = (response as any).txid || response;
+            return typeof txid === 'string' ? txid : (txid as any).toString();
+        } catch (error) {
+            console.error('Error in Stacks platform pause:', error);
             throw error;
         }
     }

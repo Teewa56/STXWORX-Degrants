@@ -7,23 +7,59 @@ export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  salt: text("salt").notNull().default(""), // Salt for password hashing
   role: text("role").default("user").notNull(), // user, admin
   mfaEnabled: boolean("mfa_enabled").default(false).notNull(),
   mfaSecret: text("mfa_secret"),
   stxAddress: text("stx_address"), // Linked Stacks address
+  displayName: text("display_name"),
+  email: text("email"),
+  phone: text("phone"),
+  bio: text("bio"),
+  location: text("location"),
+  website: text("website"),
+  avatar: text("avatar"),
+  coverImage: text("cover_image"),
+  title: text("title"),
+  company: text("company"),
+  experience: text("experience"),
+  skills: json("skills").$type<string[]>().default([]),
+  languages: json("languages").$type<string[]>().default([]),
+  education: json("education").default([]),
+  completedProjects: integer("completed_projects").default(0),
+  totalEarnings: integer("total_earnings").default(0),
+  reputation: integer("reputation").default(0),
+  rating: integer("rating").default(0),
+  reviews: integer("reviews").default(0),
+  responseRate: integer("response_rate").default(0),
+  responseTime: text("response_time"),
+  socialLinks: json("social_links").default({}),
+  portfolioItems: json("portfolio_items").default([]),
+  preferences: json("preferences").default({
+    emailNotifications: true,
+    publicProfile: true,
+    showEarnings: false,
+    allowMessages: true
+  }),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+});
+
+export const updateProfileSchema = createInsertSchema(users).omit({
+  id: true,
   username: true,
   password: true,
+  salt: true,
   role: true,
   mfaEnabled: true,
   mfaSecret: true,
-  stxAddress: true,
-});
+}).partial();
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 
 // Categories for freelance work
 export const categories = pgTable("categories", {

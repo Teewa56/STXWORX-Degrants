@@ -84,6 +84,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/nft", nftRouter);
   app.use("/api/x", xRouter);
 
+  // User Profile Routes
+  app.get("/api/users/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Remove sensitive data
+      const { password, salt, mfaSecret, ...profile } = user;
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.patch("/api/users/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const { updateProfileSchema } = await import("@shared/schema");
+      const validatedData = updateProfileSchema.parse(req.body);
+
+      const updatedUser = await storage.updateUser(req.user.id, validatedData as any);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { password, salt, mfaSecret, ...profile } = updatedUser;
+      res.json(profile);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

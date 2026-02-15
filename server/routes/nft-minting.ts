@@ -65,12 +65,7 @@ const checkEligibilitySchema = z.object({
   achievementType: z.enum(['bronze', 'silver', 'gold', 'platinum', 'verified']),
 });
 
-// Middleware for authentication (placeholder, replace with actual auth)
-const authenticateToken = (req: any, res: any, next: any) => {
-  // In a real app, you'd verify a token here and set req.user
-  req.user = { id: req.body.userId || 'a1b2c3d4-e5f6-7890-1234-567890abcdef' }; // Mock user for testing
-  next();
-};
+import { authenticateToken } from '../middleware/auth';
 
 // Check user eligibility for achievement
 router.post('/check-eligibility', async (req, res) => {

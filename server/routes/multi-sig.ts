@@ -58,8 +58,8 @@ router.post('/proposals', authenticateToken, async (req: any, res) => {
     }
 
     // Verify proposer is authorized signer (check by userId or linked stxAddress)
-    const user = await storage.getUser(proposerId);
-    if (!user || !isAuthorizedSigner(user.id)) {
+    const isAuthorized = await isAuthorizedSigner(proposerId);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Not authorized to create proposals' });
     }
 
@@ -109,10 +109,17 @@ function generateProposalId(): string {
 }
 
 // Check if user is authorized signer
-function isAuthorizedSigner(userId: string): boolean {
-  // TODO: Implement proper signer verification
-  // For now, check against environment variable
-  return SIGNERS.includes(userId);
+async function isAuthorizedSigner(userId: string): Promise<boolean> {
+  try {
+    const user = await storage.getUser(userId);
+    if (!user || !user.stxAddress) return false;
+
+    // Check if user's Stacks address is in the SIGNERS list
+    return SIGNERS.includes(user.stxAddress);
+  } catch (error) {
+    console.error('Error verifying signer:', error);
+    return false;
+  }
 }
 
 // Log admin action
@@ -190,7 +197,8 @@ router.post('/proposals/:proposalId/approve', authenticateToken, async (req: any
     if (!approverId) return res.status(401).json({ error: 'Unauthorized' });
 
     // Verify approver is authorized signer
-    if (!isAuthorizedSigner(approverId)) {
+    const isAuthorized = await isAuthorizedSigner(approverId);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Not authorized to approve proposals' });
     }
 
@@ -256,7 +264,8 @@ router.post('/proposals/:proposalId/execute', authenticateToken, async (req: any
     if (!executorId) return res.status(401).json({ error: 'Unauthorized' });
 
     // Verify executor is authorized signer
-    if (!isAuthorizedSigner(executorId)) {
+    const isAuthorized = await isAuthorizedSigner(executorId);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Not authorized to execute proposals' });
     }
 

@@ -12,15 +12,17 @@ import {
   type Project,
   type DaoTransaction
 } from '@shared/schema';
-import { authenticateAdmin } from '../middleware/auth';
+import { AuthenticatedRequest, authenticateAdmin } from '../middleware/auth';
+import { StacksService } from '../services/stacks';
+import { eq, desc, ilike, gte, lte, sql, and } from 'drizzle-orm';
 
 const router = Router();
 
 // all admin actions (audit log)
-router.get('/actions', authenticateAdmin, async (req, res) => {
+router.get('/actions', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const actions = await db.select().from(adminActions)
-      .orderBy((adminActions: any, { desc }: any) => [desc(adminActions.timestamp)])
+      .orderBy(desc(adminActions.timestamp))
       .limit(100)
       .execute();
 
@@ -36,11 +38,11 @@ router.get('/actions', authenticateAdmin, async (req, res) => {
 });
 
 // Get escrow management data
-router.get('/escrows', authenticateAdmin, async (req, res) => {
+router.get('/escrows', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const escrows = await db.select().from(projects)
-      .where((projects: any, { eq }: any) => eq(projects.status, 'ACTIVE'))
-      .orderBy((projects: any, { desc }: any) => [desc(projects.createdAt)])
+      .where(eq(projects.status, 'ACTIVE'))
+      .orderBy(desc(projects.createdAt))
       .limit(50)
       .execute();
 
@@ -56,21 +58,21 @@ router.get('/escrows', authenticateAdmin, async (req, res) => {
 });
 
 // Get specific escrow details
-router.get('/escrows/:id', authenticateAdmin, async (req, res) => {
+router.get('/escrows/:id', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const escrowId = req.params.id;
-    const escrow = await db.select().from(projects)
-      .where((projects: any, { eq }: any) => eq(projects.id, escrowId))
+    const escrowList = await db.select().from(projects)
+      .where(eq(projects.id, escrowId))
       .limit(1)
       .execute();
 
-    if (!escrow.length) {
+    if (!escrowList.length) {
       return res.status(404).json({ error: 'Escrow not found' });
     }
 
     res.json({
       success: true,
-      data: escrow[0]
+      data: escrowList[0]
     });
   } catch (error) {
     console.error('Error fetching escrow:', error);
@@ -79,14 +81,14 @@ router.get('/escrows/:id', authenticateAdmin, async (req, res) => {
 });
 
 // Approve or reject escrow
-router.post('/escrows/:id/approve', authenticateAdmin, async (req, res) => {
+router.post('/escrows/:id/approve', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const escrowId = req.params.id;
     const { action, reason } = req.body;
 
     // Log admin action
     await db.insert(adminActions).values({
-      adminId: req.user?.userId || 'system',
+      adminId: req.user?.id || 'system',
       actionType: action,
       actionData: {
         escrowId,
@@ -96,10 +98,20 @@ router.post('/escrows/:id/approve', authenticateAdmin, async (req, res) => {
       }
     }).execute();
 
-    // TODO: Implement actual escrow approval logic via smart contract
+    // Execute real escrow action on-chain if appropriate
+    let txId = null;
+    if (action === 'APPROVE') {
+      const projectList = await db.select().from(projects).where(eq(projects.id, escrowId)).limit(1).execute();
+      const project = projectList[0];
+      if (project && project.onChainId) {
+        txId = await StacksService.approveEscrowOnChain(project.onChainId);
+      }
+    }
+
     res.json({
       success: true,
-      message: `Escrow ${action} processed`
+      message: `Escrow ${action} processed`,
+      txId
     });
   } catch (error) {
     console.error('Error approving escrow:', error);
@@ -108,14 +120,14 @@ router.post('/escrows/:id/approve', authenticateAdmin, async (req, res) => {
 });
 
 // Pause/unpause escrow
-router.post('/escrows/:id/pause', authenticateAdmin, async (req, res) => {
+router.post('/escrows/:id/pause', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const escrowId = req.params.id;
     const { paused, reason } = req.body;
 
     // Log admin action
     await db.insert(adminActions).values({
-      adminId: req.user?.userId || 'system',
+      adminId: req.user?.id || 'system',
       actionType: paused ? 'PAUSE_ESCROW' : 'UNPAUSE_ESCROW',
       actionData: {
         escrowId,
@@ -125,10 +137,13 @@ router.post('/escrows/:id/pause', authenticateAdmin, async (req, res) => {
       }
     }).execute();
 
-    // TODO: Implement actual pause logic via smart contract
+    // Execute real platform pause on-chain
+    const txId = await StacksService.setPlatformPauseOnChain(paused);
+
     res.json({
       success: true,
-      message: `Escrow ${paused ? 'paused' : 'unpaused'}`
+      message: `Escrow ${paused ? 'paused' : 'unpaused'}`,
+      txId
     });
   } catch (error) {
     console.error('Error pausing escrow:', error);
@@ -137,20 +152,24 @@ router.post('/escrows/:id/pause', authenticateAdmin, async (req, res) => {
 });
 
 // Get user management data
-router.get('/users', authenticateAdmin, async (req, res) => {
+router.get('/users', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string || '';
 
-    let query = db.select().from(users);
-
+    let filters = [];
     if (search) {
-      query = query.where((users: any, { ilike }: any) => ilike(users.username, `%${search}%`));
+      filters.push(ilike(users.username, `%${search}%`));
+    }
+
+    let query = db.select().from(users);
+    if (filters.length > 0) {
+      query = query.where(and(...filters)) as any;
     }
 
     const results = await query
-      .orderBy((users: any, { desc }: any) => [desc(users.createdAt)])
+      .orderBy(desc(users.username))
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
@@ -171,27 +190,27 @@ router.get('/users', authenticateAdmin, async (req, res) => {
 });
 
 // Get platform statistics
-router.get('/stats', authenticateAdmin, async (req, res) => {
+router.get('/stats', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     // Get total projects
-    const totalProjects = await db.select({ count: db.fn.count(projects.id) })
+    const totalProjects = await db.select({ count: sql<number>`count(${projects.id})` })
       .from(projects)
       .execute();
 
     // Get active escrows
-    const activeEscrows = await db.select({ count: db.fn.count(projects.id) })
+    const activeEscrows = await db.select({ count: sql<number>`count(${projects.id})` })
       .from(projects)
-      .where((projects: any, { eq }: any) => eq(projects.status, 'ACTIVE'))
+      .where(eq(projects.status, 'ACTIVE'))
       .execute();
 
     // Get completed projects
-    const completedProjects = await db.select({ count: db.fn.count(projects.id) })
+    const completedProjects = await db.select({ count: sql<number>`count(${projects.id})` })
       .from(projects)
-      .where((projects: any, { eq }: any) => eq(projects.status, 'COMPLETED'))
+      .where(eq(projects.status, 'COMPLETED'))
       .execute();
 
     // Get total users
-    const totalUsers = await db.select({ count: db.fn.count(users.id) })
+    const totalUsers = await db.select({ count: sql<number>`count(${users.id})` })
       .from(users)
       .execute();
 
@@ -221,7 +240,7 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
 });
 
 // Get NFT achievements data
-router.get('/nfts', authenticateAdmin, async (req, res) => {
+router.get('/nfts', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -240,8 +259,8 @@ router.get('/nfts', authenticateAdmin, async (req, res) => {
       }
     })
       .from(nftAchievements)
-      .leftJoin(users, (nftAchievements: any, { eq }: any) => eq(nftAchievements.userId, users.id))
-      .orderBy((nftAchievements: any, { desc }: any) => [desc(nftAchievements.mintedAt)])
+      .leftJoin(users, eq(nftAchievements.userId, users.id))
+      .orderBy(desc(nftAchievements.mintedAt))
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
@@ -262,7 +281,7 @@ router.get('/nfts', authenticateAdmin, async (req, res) => {
 });
 
 // Get leaderboard data
-router.get('/leaderboard', authenticateAdmin, async (req, res) => {
+router.get('/leaderboard', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const { category, limit = '100' } = req.query;
     const limitVal = parseInt(limit as string);
@@ -278,14 +297,14 @@ router.get('/leaderboard', authenticateAdmin, async (req, res) => {
       }
     })
       .from(leaderboardScores)
-      .leftJoin(users, (leaderboardScores: any, { eq }: any) => eq(leaderboardScores.userId, users.id));
+      .leftJoin(users, eq(leaderboardScores.userId, users.id));
 
     if (category) {
-      query = query.where((leaderboardScores: any, { eq }: any) => eq(leaderboardScores.scoreType, category as string));
+      query = query.where(eq(leaderboardScores.scoreType, category as string)) as any;
     }
 
     const scores = await query
-      .orderBy((leaderboardScores: any, { desc }: any) => [desc(leaderboardScores.scoreValue)])
+      .orderBy(desc(leaderboardScores.scoreValue))
       .limit(limitVal)
       .execute();
 
@@ -302,7 +321,7 @@ router.get('/leaderboard', authenticateAdmin, async (req, res) => {
 });
 
 // Get X integrations
-router.get('/x-integrations', authenticateAdmin, async (req, res) => {
+router.get('/x-integrations', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -311,11 +330,11 @@ router.get('/x-integrations', authenticateAdmin, async (req, res) => {
     let query = db.select().from(xIntegrations);
 
     if (verified) {
-      query = query.where((xIntegrations: any, { eq }: any) => eq(xIntegrations.verified, true));
+      query = query.where(eq(xIntegrations.verified, true)) as any;
     }
 
     const integrations = await query
-      .orderBy((xIntegrations: any, { desc }: any) => [desc(xIntegrations.lastSync)])
+      .orderBy(desc(xIntegrations.lastSync))
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
@@ -336,28 +355,30 @@ router.get('/x-integrations', authenticateAdmin, async (req, res) => {
 });
 
 // Get DAO transactions
-router.get('/dao-transactions', authenticateAdmin, async (req, res) => {
+router.get('/dao-transactions', authenticateAdmin, async (req: AuthenticatedRequest, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const { tokenType, startDate, endDate } = req.query;
 
-    let query = db.select().from(daoTransactions);
-
+    let filters = [];
     if (tokenType) {
-      query = query.where((daoTransactions: any, { eq }: any) => eq(daoTransactions.tokenType, tokenType as string));
+      filters.push(eq(daoTransactions.tokenType, tokenType as string));
     }
-
     if (startDate) {
-      query = query.where((daoTransactions: any, { gte }: any) => gte(daoTransactions.timestamp, startDate as string));
+      filters.push(gte(daoTransactions.timestamp, startDate as string));
+    }
+    if (endDate) {
+      filters.push(lte(daoTransactions.timestamp, endDate as string));
     }
 
-    if (endDate) {
-      query = query.where((daoTransactions: any, { lte }: any) => lte(daoTransactions.timestamp, endDate as string));
+    let query = db.select().from(daoTransactions);
+    if (filters.length > 0) {
+      query = query.where(and(...filters)) as any;
     }
 
     const transactions = await query
-      .orderBy((daoTransactions: any, { desc }: any) => [desc(daoTransactions.timestamp)])
+      .orderBy(desc(daoTransactions.timestamp))
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();

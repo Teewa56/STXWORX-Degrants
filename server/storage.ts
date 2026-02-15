@@ -6,6 +6,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
 
   // Category methods
   getAllCategories(): Promise<Category[]>;
@@ -75,6 +76,16 @@ export class PostgresStorage implements IStorage {
     const { users } = await import("@shared/schema");
     const result = await this.db.insert(users).values(insertUser).returning();
     return result[0];
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const { users } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const [result] = await this.db.update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return result;
   }
 
   // Category methods
@@ -466,9 +477,47 @@ export class MemStorage implements IStorage {
       mfaEnabled: insertUser.mfaEnabled || false,
       mfaSecret: insertUser.mfaSecret || null,
       stxAddress: insertUser.stxAddress || null,
+      salt: insertUser.salt || "",
+      displayName: insertUser.displayName || null,
+      email: insertUser.email || null,
+      phone: insertUser.phone || null,
+      bio: insertUser.bio || null,
+      location: insertUser.location || null,
+      website: insertUser.website || null,
+      avatar: insertUser.avatar || null,
+      coverImage: insertUser.coverImage || null,
+      title: insertUser.title || null,
+      company: insertUser.company || null,
+      experience: insertUser.experience || null,
+      skills: (insertUser.skills as any) || [],
+      languages: (insertUser.languages as any) || [],
+      education: (insertUser.education as any) || [],
+      completedProjects: insertUser.completedProjects || 0,
+      totalEarnings: insertUser.totalEarnings || 0,
+      reputation: insertUser.reputation || 0,
+      rating: insertUser.rating || 0,
+      reviews: insertUser.reviews || 0,
+      responseRate: insertUser.responseRate || 0,
+      responseTime: insertUser.responseTime || null,
+      socialLinks: (insertUser.socialLinks as any) || {},
+      portfolioItems: (insertUser.portfolioItems as any) || [],
+      preferences: (insertUser.preferences as any) || {
+        emailNotifications: true,
+        publicProfile: true,
+        showEarnings: false,
+        allowMessages: true
+      },
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    const updated = { ...user, ...updates };
+    this.users.set(id, updated);
+    return updated;
   }
 
   // Category methods
@@ -743,6 +792,7 @@ export class MemStorage implements IStorage {
       executionTxId: null,
       executionResult: null,
       functionArgs: proposal.functionArgs as string[],
+      onChainId: proposal.onChainId ?? null,
     };
     this.daoProposals.set(id, result);
     return result;

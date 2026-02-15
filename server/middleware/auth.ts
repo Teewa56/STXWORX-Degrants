@@ -330,7 +330,7 @@ export class AuthService {
       }
 
       // Verify password with real hashing
-      if (!EncryptionUtils.verifyPassword(password, user.password, '')) {
+      if (!this.verifyPassword(password, user.password, user.salt || '')) {
         // Note: In a real system, the salt would be stored in the DB alongside the hash
         // The current EncryptionUtils.hashPassword returns both. 
         // For now, we assume current hash format handle salt if we update the hasher.
@@ -410,10 +410,9 @@ export class AuthService {
     }
   }
 
-  // Verify password (placeholder)
-  private static verifyPassword(password: string, hash: string): boolean {
-    // TODO: Implement proper password verification
-    return password === 'password123'; // Placeholder
+  // Verify password using secure hashing
+  private static verifyPassword(password: string, hash: string, salt: string): boolean {
+    return EncryptionUtils.verifyPassword(password, hash, salt);
   }
 
   // Setup MFA for user
@@ -475,8 +474,11 @@ export class AuthService {
   // Disable MFA
   static async disableMFA(userId: string, password: string, mfaToken: string): Promise<boolean> {
     try {
+      const user = await storage.getUser(userId);
+      if (!user) return false;
+
       // Verify password
-      if (!this.verifyPassword(password, 'hashed_password')) {
+      if (!this.verifyPassword(password, user.password, user.salt || '')) {
         return false;
       }
 
