@@ -22,6 +22,8 @@ npm run dev
 # Visit http://localhost:5000
 ```
 
+**For local development and testing tutorials**, see our [Testing & Setup Guide](TESTING_GUIDE.md).
+
 **For testnet deployment**, jump to [Testnet Deployment](#-testnet-deployment) section.
 
 ---
