@@ -38,7 +38,7 @@ It uses testnet for now - testing in development.
 - [x] Develop Real NFT minting API
   - [x] Integrate Clarity smart contract calls
 - [x] Implement multi-sig transaction APIs
-  - [ ] Replace in-memory proposal storage with DB
+  - [x] Replace in-memory proposal storage with DB
 
 ### 1.4 Security Infrastructure
 - [x] Setup Redis for session management and caching
@@ -57,7 +57,7 @@ It uses testnet for now - testing in development.
 - [x] Develop user management dashboard
 - [x] Implement dispute resolution interface
 - [/] Build transaction approval workflow
-  - [ ] Integrate real Multi-sig execution (currently simulated)
+  - [x] Integrate real Multi-sig execution
 - [x] Add audit log viewer
 - [x] Create system settings panel
 
@@ -108,7 +108,7 @@ It uses testnet for now - testing in development.
 - [x] Add achievement criteria display
 - [x] Create transfer restriction UI
 - [x] Build achievement tracking system
-- [ ] Add IPFS integration for assets
+- [x] Add IPFS integration for assets
 
 ## Phase 3: Smart Contract Deployment
 
