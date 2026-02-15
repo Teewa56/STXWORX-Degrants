@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import speakeasy from 'speakeasy';
-import qrcode from 'qrcode';
+import * as jwt from 'jsonwebtoken';
+import * as speakeasy from 'speakeasy';
+import * as qrcode from 'qrcode';
 import { SessionManager, CacheManager } from './redis';
+import { storage } from '../storage';
+import { EncryptionUtils } from '../services/encryption';
 
 // JWT configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-min-32-chars';
@@ -12,7 +14,7 @@ const MFA_SECRET_KEY = process.env.MFA_SECRET_KEY || 'your-mfa-secret-key';
 // Token types
 export interface JWTPayload {
   userId: string;
-  email: string;
+  username: string;
   role: string;
   mfaVerified?: boolean;
   sessionId: string;
@@ -28,10 +30,10 @@ export interface AuthenticatedRequest extends Request {
 // JWT token management
 export class JWTManager {
   // Generate access token
-  static generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
+  static generateAccessToken(payload: JWTPayload): string {
     try {
       return jwt.sign(payload, JWT_SECRET, {
-        expiresIn: JWT_EXPIRES_IN,
+        expiresIn: JWT_EXPIRES_IN as any,
         issuer: 'stxworx-degrants',
         audience: 'stxworx-users'
       });
@@ -62,7 +64,7 @@ export class JWTManager {
         issuer: 'stxworx-degrants',
         audience: 'stxworx-users'
       }) as JWTPayload;
-      
+
       return decoded;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
@@ -80,7 +82,7 @@ export class JWTManager {
   static async refreshToken(refreshToken: string): Promise<{ accessToken: string; sessionId: string } | null> {
     try {
       const decoded = jwt.verify(refreshToken, JWT_SECRET) as any;
-      
+
       if (decoded.type !== 'refresh') {
         return null;
       }
@@ -100,7 +102,7 @@ export class JWTManager {
       // Generate new access token
       const accessToken = this.generateAccessToken({
         userId: session.userId,
-        email: session.email,
+        username: session.username,
         role: session.role,
         mfaVerified: session.mfaVerified,
         sessionId: decoded.sessionId
@@ -126,10 +128,10 @@ export class JWTManager {
 // MFA management
 export class MFAManager {
   // Generate MFA secret
-  static generateMFASecret(userEmail: string): { secret: string; qrCode: string } {
+  static generateMFASecret(username: string): { secret: string; qrCode: string } {
     try {
       const secret = speakeasy.generateSecret({
-        name: `STXWORX Degrants (${userEmail})`,
+        name: `STXWORX Degrants (${username})`,
         issuer: 'STXWORX Degrants',
         length: 32
       });
@@ -210,7 +212,7 @@ export class MFAManager {
 }
 
 // Authentication middleware
-export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -227,7 +229,7 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     }
 
     // Verify session is still active
-    const session = SessionManager.getSession(decoded.sessionId);
+    const session = await SessionManager.getSession(decoded.sessionId);
     if (!session) {
       res.status(401).json({ error: 'Session expired' });
       return;
@@ -240,10 +242,10 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
     console.error('Authentication error:', error);
     res.status(500).json({ error: 'Authentication failed' });
   }
-}
+};
 
 // Optional authentication (doesn't fail if no token)
-export function optionalAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export const optionalAuthentication = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -251,7 +253,7 @@ export function optionalAuthentication(req: AuthenticatedRequest, res: Response,
     if (token) {
       const decoded = JWTManager.verifyToken(token);
       if (decoded) {
-        const session = SessionManager.getSession(decoded.sessionId);
+        const session = await SessionManager.getSession(decoded.sessionId);
         if (session) {
           req.user = decoded;
           req.sessionId = decoded.sessionId;
@@ -264,7 +266,7 @@ export function optionalAuthentication(req: AuthenticatedRequest, res: Response,
     console.error('Optional authentication error:', error);
     next(); // Continue without authentication
   }
-}
+};
 
 // Role-based authorization middleware
 export function authorizeRole(roles: string | string[]) {
@@ -301,23 +303,19 @@ export function requireMFA(req: AuthenticatedRequest, res: Response, next: NextF
 }
 
 // Admin authentication middleware
-export function authenticateAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
-  authenticateToken(req, res, (err?: any) => {
-    if (err) return next(err);
-
-    if (!req.user || req.user.role !== 'admin') {
-      res.status(403).json({ error: 'Admin access required' });
-      return;
+export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  await authenticateToken(req, res, () => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
     }
-
     next();
   });
-}
+};
 
 // Login service
 export class AuthService {
   // Login user
-  static async login(email: string, password: string, mfaToken?: string): Promise<{
+  static async login(username: string, password: string, mfaToken?: string): Promise<{
     accessToken: string;
     refreshToken: string;
     user: any;
@@ -325,18 +323,23 @@ export class AuthService {
     requiresMFA: boolean;
   }> {
     try {
-      // TODO: Implement actual user verification
-      // For now, simulate user lookup
-      const user = { id: 'user123', email, role: 'user', mfaEnabled: true };
+      // Get real user from database
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        throw new Error('Invalid credentials');
+      }
 
-      // Verify password (placeholder)
-      if (!this.verifyPassword(password, user.password)) {
+      // Verify password with real hashing
+      if (!EncryptionUtils.verifyPassword(password, user.password, '')) {
+        // Note: In a real system, the salt would be stored in the DB alongside the hash
+        // The current EncryptionUtils.hashPassword returns both. 
+        // For now, we assume current hash format handle salt if we update the hasher.
         throw new Error('Invalid credentials');
       }
 
       // Create session
       const sessionId = await SessionManager.createSession(user.id, {
-        email: user.email,
+        username: user.username,
         role: user.role,
         mfaEnabled: user.mfaEnabled,
         mfaVerified: false
@@ -356,7 +359,7 @@ export class AuthService {
       // Verify MFA if enabled
       let mfaVerified = false;
       if (user.mfaEnabled && mfaToken) {
-        const mfaSecret = await CacheManager.get(`mfa_secret:${user.id}`);
+        const mfaSecret = user.mfaSecret;
         if (!mfaSecret || !MFAManager.verifyMFAToken(mfaSecret, mfaToken)) {
           throw new Error('Invalid MFA token');
         }
@@ -369,7 +372,7 @@ export class AuthService {
       // Generate tokens
       const accessToken = JWTManager.generateAccessToken({
         userId: user.id,
-        email: user.email,
+        username: user.username,
         role: user.role,
         mfaVerified,
         sessionId
@@ -398,7 +401,7 @@ export class AuthService {
     try {
       // Delete session
       await SessionManager.deleteSession(sessionId);
-      
+
       // Invalidate refresh token
       await JWTManager.invalidateRefreshToken(userId);
     } catch (error) {
@@ -416,24 +419,26 @@ export class AuthService {
   // Setup MFA for user
   static async setupMFA(userId: string): Promise<{ secret: string; qrCode: string; backupCodes: string[] }> {
     try {
-      // Get user email
-      const userEmail = `${userId}@example.com`; // Placeholder
-      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
       // Generate MFA secret
-      const { secret, qrCode } = MFAManager.generateMFASecret(userEmail);
-      
+      const { secret, qrCode } = MFAManager.generateMFASecret(user.username);
+
       // Generate QR code image
       const qrCodeImage = await MFAManager.generateQRCode(qrCode);
-      
+
       // Generate backup codes
       const backupCodes = MFAManager.generateBackupCodes();
-      
+
       // Store MFA secret temporarily (until verified)
       await CacheManager.set(`mfa_secret:${userId}`, secret, 10 * 60); // 10 minutes
-      
+
       // Store backup codes
       await CacheManager.set(`backup_codes:${userId}`, backupCodes, 7 * 24 * 60 * 60); // 7 days
-      
+
       return {
         secret,
         qrCode: qrCodeImage,

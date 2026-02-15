@@ -2,9 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertEscrowSchema } from "@shared/schema";
+import adminRouter from "./routes/admin";
+import chatRouter from "./routes/chat";
+import multiSigRouter from "./routes/multi-sig";
+import nftRouter from "./routes/nft-minting";
+import xRouter from "./routes/x-integration";
+import { authenticateToken } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
   // Get all categories
   app.get("/api/categories", async (req, res) => {
     try {
@@ -59,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!escrow) {
         return res.status(404).json({ error: "Escrow not found" });
       }
-      
+
       if (escrow.status !== 'locked') {
         return res.status(400).json({ error: "Escrow is not in locked status" });
       }
@@ -70,6 +76,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to release escrow" });
     }
   });
+
+  // Mount specialized routes
+  app.use("/api/admin", adminRouter);
+  app.use("/api/chat", chatRouter);
+  app.use("/api/multi-sig", multiSigRouter);
+  app.use("/api/nft", nftRouter);
+  app.use("/api/x", xRouter);
 
   const httpServer = createServer(app);
   return httpServer;

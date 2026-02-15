@@ -7,11 +7,17 @@ export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").default("user").notNull(), // user, admin
+  mfaEnabled: boolean("mfa_enabled").default(false).notNull(),
+  mfaSecret: text("mfa_secret"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
+  mfaEnabled: true,
+  mfaSecret: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -45,7 +51,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   category: text("category"),
   subcategory: text("subcategory"),
-  
+
   // Milestone 1
   milestone1Amount: integer("milestone_1_amount").notNull(),
   milestone1Title: text("milestone_1_title").notNull().default("Milestone 1"),
@@ -56,7 +62,7 @@ export const projects = pgTable("projects", {
   milestone1Released: boolean("milestone_1_released").default(false).notNull(),
   milestone1CompletionAttachment: text("milestone_1_completion_attachment"), // Freelancer's attachment when completing
   milestone1CompletionDescription: text("milestone_1_completion_description"), // Freelancer's description when completing
-  
+
   // Milestone 2
   milestone2Amount: integer("milestone_2_amount").notNull(),
   milestone2Title: text("milestone_2_title").notNull().default("Milestone 2"),
@@ -67,7 +73,7 @@ export const projects = pgTable("projects", {
   milestone2Released: boolean("milestone_2_released").default(false).notNull(),
   milestone2CompletionAttachment: text("milestone_2_completion_attachment"),
   milestone2CompletionDescription: text("milestone_2_completion_description"),
-  
+
   // Milestone 3
   milestone3Amount: integer("milestone_3_amount").notNull(),
   milestone3Title: text("milestone_3_title").notNull().default("Milestone 3"),
@@ -78,7 +84,7 @@ export const projects = pgTable("projects", {
   milestone3Released: boolean("milestone_3_released").default(false).notNull(),
   milestone3CompletionAttachment: text("milestone_3_completion_attachment"),
   milestone3CompletionDescription: text("milestone_3_completion_description"),
-  
+
   // Milestone 4
   milestone4Amount: integer("milestone_4_amount").notNull(),
   milestone4Title: text("milestone_4_title").notNull().default("Milestone 4"),
@@ -89,7 +95,7 @@ export const projects = pgTable("projects", {
   milestone4Released: boolean("milestone_4_released").default(false).notNull(),
   milestone4CompletionAttachment: text("milestone_4_completion_attachment"),
   milestone4CompletionDescription: text("milestone_4_completion_description"),
-  
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

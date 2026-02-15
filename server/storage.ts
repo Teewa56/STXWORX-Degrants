@@ -6,12 +6,12 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Category methods
   getAllCategories(): Promise<Category[]>;
   getCategory(id: string): Promise<Category | undefined>;
   getCategoryByName(name: string): Promise<Category | undefined>;
-  
+
   // Escrow methods (legacy - kept for compatibility)
   getAllEscrows(): Promise<Escrow[]>;
   getEscrow(id: string): Promise<Escrow | undefined>;
@@ -21,7 +21,7 @@ export interface IStorage {
   createEscrow(escrow: InsertEscrow): Promise<Escrow>;
   updateEscrow(id: string, updates: Partial<Escrow>): Promise<Escrow | undefined>;
   updateEscrowStatus(id: string, status: string): Promise<Escrow | undefined>;
-  
+
   // Project methods (milestone-based)
   getAllProjects(): Promise<Project[]>;
   getProject(id: string): Promise<Project | undefined>;
@@ -222,10 +222,10 @@ export class MemStorage implements IStorage {
     this.categories = new Map();
     this.escrows = new Map();
     this.projects = new Map();
-    
+
     this.seedCategories();
   }
-  
+
   private seedCategories() {
     const categoryData: InsertCategory[] = [
       {
@@ -312,10 +312,10 @@ export class MemStorage implements IStorage {
         ],
       },
     ];
-    
+
     categoryData.forEach((cat) => {
       const id = randomUUID();
-      const category: Category = { ...cat, id };
+      const category: Category = { ...cat, id } as Category;
       this.categories.set(id, category);
     });
   }
@@ -333,7 +333,13 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = {
+      ...insertUser,
+      id,
+      role: insertUser.role || "user",
+      mfaEnabled: insertUser.mfaEnabled || false,
+      mfaSecret: insertUser.mfaSecret || null,
+    };
     this.users.set(id, user);
     return user;
   }
@@ -409,19 +415,19 @@ export class MemStorage implements IStorage {
     if (!escrow) {
       return undefined;
     }
-    
+
     const updated: Escrow = { ...escrow, ...updates };
     this.escrows.set(id, updated);
     return updated;
   }
-  
+
   async updateEscrowStatus(id: string, status: string): Promise<Escrow | undefined> {
     // Legacy method - kept for compatibility
     const escrow = this.escrows.get(id);
     if (!escrow) {
       return undefined;
     }
-    
+
     // Map old status to new boolean fields
     const updates: Partial<Escrow> = {};
     if (status === 'funded') {
@@ -431,7 +437,7 @@ export class MemStorage implements IStorage {
     } else if (status === 'released') {
       updates.released = true;
     }
-    
+
     return this.updateEscrow(id, updates);
   }
 
@@ -470,7 +476,7 @@ export class MemStorage implements IStorage {
       description: insertProject.description || null,
       category: insertProject.category || null,
       subcategory: insertProject.subcategory || null,
-      
+
       // Milestone 1
       milestone1Amount: insertProject.milestone1Amount,
       milestone1Title: insertProject.milestone1Title || "Milestone 1",
@@ -481,7 +487,7 @@ export class MemStorage implements IStorage {
       milestone1Released: false,
       milestone1CompletionAttachment: null,
       milestone1CompletionDescription: null,
-      
+
       // Milestone 2
       milestone2Amount: insertProject.milestone2Amount,
       milestone2Title: insertProject.milestone2Title || "Milestone 2",
@@ -492,7 +498,7 @@ export class MemStorage implements IStorage {
       milestone2Released: false,
       milestone2CompletionAttachment: null,
       milestone2CompletionDescription: null,
-      
+
       // Milestone 3
       milestone3Amount: insertProject.milestone3Amount,
       milestone3Title: insertProject.milestone3Title || "Milestone 3",
@@ -503,7 +509,7 @@ export class MemStorage implements IStorage {
       milestone3Released: false,
       milestone3CompletionAttachment: null,
       milestone3CompletionDescription: null,
-      
+
       // Milestone 4
       milestone4Amount: insertProject.milestone4Amount,
       milestone4Title: insertProject.milestone4Title || "Milestone 4",
@@ -514,11 +520,11 @@ export class MemStorage implements IStorage {
       milestone4Released: false,
       milestone4CompletionAttachment: null,
       milestone4CompletionDescription: null,
-      
+
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.projects.set(id, project);
     return project;
   }
@@ -528,9 +534,9 @@ export class MemStorage implements IStorage {
     if (!project) {
       return undefined;
     }
-    
-    const updated: Project = { 
-      ...project, 
+
+    const updated: Project = {
+      ...project,
       ...updates,
       updatedAt: new Date()
     };

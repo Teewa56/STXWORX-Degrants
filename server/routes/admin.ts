@@ -1,43 +1,29 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { 
-  users, 
-  adminActions, 
-  projects, 
-  nftAchievements, 
-  leaderboardScores, 
+import {
+  adminActions,
+  projects,
+  nftAchievements,
+  leaderboardScores,
   xIntegrations,
   daoTransactions,
-  type AdminAction,
-  type InsertAdminAction,
+  users,
   type Project,
-  type NftAchievement,
-  type LeaderboardScore,
-  type XIntegration,
   type DaoTransaction
 } from '@shared/schema';
+import { authenticateAdmin } from '../middleware/auth';
 
 const router = Router();
 
-// Middleware for admin authentication (simplified for now)
-const adminAuth = (req: any, res: any, next: any) => {
-  // TODO: Implement proper JWT/MFA authentication
-  const adminAddress = process.env.ADMIN_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
-  if (req.user?.address !== adminAddress) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-  next();
-};
-
-// Get all admin actions (audit log)
-router.get('/actions', adminAuth, async (req, res) => {
+// all admin actions (audit log)
+router.get('/actions', authenticateAdmin, async (req, res) => {
   try {
     const actions = await db.select().from(adminActions)
-      .orderBy((adminActions, { desc: adminActions.timestamp }))
+      .orderBy((adminActions: any, { desc }: any) => [desc(adminActions.timestamp)])
       .limit(100)
       .execute();
-    
+
     res.json({
       success: true,
       data: actions,
@@ -50,14 +36,14 @@ router.get('/actions', adminAuth, async (req, res) => {
 });
 
 // Get escrow management data
-router.get('/escrows', adminAuth, async (req, res) => {
+router.get('/escrows', authenticateAdmin, async (req, res) => {
   try {
     const escrows = await db.select().from(projects)
-      .where((projects, { eq: projects.status, 'ACTIVE' }))
-      .orderBy((projects, { desc: projects.createdAt }))
+      .where((projects: any, { eq }: any) => eq(projects.status, 'ACTIVE'))
+      .orderBy((projects: any, { desc }: any) => [desc(projects.createdAt)])
       .limit(50)
       .execute();
-    
+
     res.json({
       success: true,
       data: escrows,
@@ -70,18 +56,18 @@ router.get('/escrows', adminAuth, async (req, res) => {
 });
 
 // Get specific escrow details
-router.get('/escrows/:id', adminAuth, async (req, res) => {
+router.get('/escrows/:id', authenticateAdmin, async (req, res) => {
   try {
     const escrowId = req.params.id;
     const escrow = await db.select().from(projects)
-      .where((projects, { eq: projects.id, escrowId }))
+      .where((projects: any, { eq }: any) => eq(projects.id, escrowId))
       .limit(1)
       .execute();
-    
+
     if (!escrow.length) {
       return res.status(404).json({ error: 'Escrow not found' });
     }
-    
+
     res.json({
       success: true,
       data: escrow[0]
@@ -93,14 +79,14 @@ router.get('/escrows/:id', adminAuth, async (req, res) => {
 });
 
 // Approve or reject escrow
-router.post('/escrows/:id/approve', adminAuth, async (req, res) => {
+router.post('/escrows/:id/approve', authenticateAdmin, async (req, res) => {
   try {
     const escrowId = req.params.id;
     const { action, reason } = req.body;
-    
+
     // Log admin action
     await db.insert(adminActions).values({
-      adminId: req.user?.id || 'system',
+      adminId: req.user?.userId || 'system',
       actionType: action,
       actionData: {
         escrowId,
@@ -109,7 +95,7 @@ router.post('/escrows/:id/approve', adminAuth, async (req, res) => {
         timestamp: new Date().toISOString()
       }
     }).execute();
-    
+
     // TODO: Implement actual escrow approval logic via smart contract
     res.json({
       success: true,
@@ -122,14 +108,14 @@ router.post('/escrows/:id/approve', adminAuth, async (req, res) => {
 });
 
 // Pause/unpause escrow
-router.post('/escrows/:id/pause', adminAuth, async (req, res) => {
+router.post('/escrows/:id/pause', authenticateAdmin, async (req, res) => {
   try {
     const escrowId = req.params.id;
     const { paused, reason } = req.body;
-    
+
     // Log admin action
     await db.insert(adminActions).values({
-      adminId: req.user?.id || 'system',
+      adminId: req.user?.userId || 'system',
       actionType: paused ? 'PAUSE_ESCROW' : 'UNPAUSE_ESCROW',
       actionData: {
         escrowId,
@@ -138,7 +124,7 @@ router.post('/escrows/:id/pause', adminAuth, async (req, res) => {
         timestamp: new Date().toISOString()
       }
     }).execute();
-    
+
     // TODO: Implement actual pause logic via smart contract
     res.json({
       success: true,
@@ -151,33 +137,31 @@ router.post('/escrows/:id/pause', adminAuth, async (req, res) => {
 });
 
 // Get user management data
-router.get('/users', adminAuth, async (req, res) => {
+router.get('/users', authenticateAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const search = req.query.search || '';
-    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string || '';
+
     let query = db.select().from(users);
-    
+
     if (search) {
-      query = query.where((users, { 
-        ilike: users.username, `%${search}%` 
-      }));
+      query = query.where((users: any, { ilike }: any) => ilike(users.username, `%${search}%`));
     }
-    
-    const users = await query
-      .orderBy((users, { desc: users.createdAt }))
+
+    const results = await query
+      .orderBy((users: any, { desc }: any) => [desc(users.createdAt)])
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
-    
+
     res.json({
       success: true,
-      data: users,
+      data: results,
       pagination: {
         page,
         limit,
-        total: users.length
+        total: results.length
       }
     });
   } catch (error) {
@@ -187,45 +171,45 @@ router.get('/users', adminAuth, async (req, res) => {
 });
 
 // Get platform statistics
-router.get('/stats', adminAuth, async (req, res) => {
+router.get('/stats', authenticateAdmin, async (req, res) => {
   try {
     // Get total projects
-    const totalProjects = await db.select({ count: projects.id })
+    const totalProjects = await db.select({ count: db.fn.count(projects.id) })
       .from(projects)
       .execute();
-    
+
     // Get active escrows
-    const activeEscrows = await db.select({ count: projects.id })
+    const activeEscrows = await db.select({ count: db.fn.count(projects.id) })
       .from(projects)
-      .where((projects, { eq: projects.status, 'ACTIVE' }))
+      .where((projects: any, { eq }: any) => eq(projects.status, 'ACTIVE'))
       .execute();
-    
+
     // Get completed projects
-    const completedProjects = await db.select({ count: projects.id })
+    const completedProjects = await db.select({ count: db.fn.count(projects.id) })
       .from(projects)
-      .where((projects, { eq: projects.status, 'COMPLETED' }))
+      .where((projects: any, { eq }: any) => eq(projects.status, 'COMPLETED'))
       .execute();
-    
+
     // Get total users
-    const totalUsers = await db.select({ count: users.id })
+    const totalUsers = await db.select({ count: db.fn.count(users.id) })
       .from(users)
       .execute();
-    
+
     // Get total volume
     const volumeResult = await db.select({
       total: projects.totalAmount
     }).from(projects)
       .execute();
-    
-    const totalVolume = volumeResult.reduce((sum, row) => sum + Number(row.total), 0);
-    
+
+    const totalVolume = volumeResult.reduce((sum: number, row: any) => sum + Number(row.total), 0);
+
     res.json({
       success: true,
       data: {
-        totalProjects: totalProjects[0].count,
-        activeEscrows: activeEscrows[0].count,
-        completedProjects: completedProjects[0].count,
-        totalUsers: totalUsers[0].count,
+        totalProjects: totalProjects[0]?.count || 0,
+        activeEscrows: activeEscrows[0]?.count || 0,
+        completedProjects: completedProjects[0]?.count || 0,
+        totalUsers: totalUsers[0]?.count || 0,
         totalVolume: totalVolume / 1000000, // Convert from microstacks to STX
         daoFees: totalVolume * 0.1 // 10% of total volume
       }
@@ -237,31 +221,31 @@ router.get('/stats', adminAuth, async (req, res) => {
 });
 
 // Get NFT achievements data
-router.get('/nfts', adminAuth, async (req, res) => {
+router.get('/nfts', authenticateAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+
     const nfts = await db.select({
       nftAchievements: {
-        id: true,
-        userId: true,
-        tokenId: true,
-        achievementType: true,
-        mintedAt: true
+        id: nftAchievements.id,
+        userId: nftAchievements.userId,
+        tokenId: nftAchievements.tokenId,
+        achievementType: nftAchievements.achievementType,
+        mintedAt: nftAchievements.mintedAt
       },
       users: {
-        username: true,
-        id: true
+        username: users.username,
+        id: users.id
       }
     })
       .from(nftAchievements)
-      .leftJoin(users, (nftAchievements, { eq: nftAchievements.userId, users.id }))
-      .orderBy((nftAchievements, { desc: nftAchievements.mintedAt }))
+      .leftJoin(users, (nftAchievements: any, { eq }: any) => eq(nftAchievements.userId, users.id))
+      .orderBy((nftAchievements: any, { desc }: any) => [desc(nftAchievements.mintedAt)])
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
-    
+
     res.json({
       success: true,
       data: nfts,
@@ -278,32 +262,33 @@ router.get('/nfts', adminAuth, async (req, res) => {
 });
 
 // Get leaderboard data
-router.get('/leaderboard', adminAuth, async (req, res) => {
+router.get('/leaderboard', authenticateAdmin, async (req, res) => {
   try {
-    const { category, limit = 100 } = req.query;
-    
+    const { category, limit = '100' } = req.query;
+    const limitVal = parseInt(limit as string);
+
     let query = db.select({
       leaderboardScores: {
-        scoreValue: true,
-        lastUpdated: true
+        scoreValue: leaderboardScores.scoreValue,
+        lastUpdated: leaderboardScores.lastUpdated
       },
       users: {
-        username: true,
-        id: true
+        username: users.username,
+        id: users.id
       }
     })
       .from(leaderboardScores)
-      .leftJoin(users, (leaderboardScores, { eq: leaderboardScores.userId, users.id }));
-    
+      .leftJoin(users, (leaderboardScores: any, { eq }: any) => eq(leaderboardScores.userId, users.id));
+
     if (category) {
-      query = query.where((leaderboardScores, { eq: leaderboardScores.scoreType, category }));
+      query = query.where((leaderboardScores: any, { eq }: any) => eq(leaderboardScores.scoreType, category as string));
     }
-    
+
     const scores = await query
-      .orderBy((leaderboardScores, { desc: leaderboardScores.scoreValue }))
-      .limit(limit)
+      .orderBy((leaderboardScores: any, { desc }: any) => [desc(leaderboardScores.scoreValue)])
+      .limit(limitVal)
       .execute();
-    
+
     res.json({
       success: true,
       data: scores,
@@ -317,22 +302,24 @@ router.get('/leaderboard', adminAuth, async (req, res) => {
 });
 
 // Get X integrations
-router.get('/x-integrations', adminAuth, async (req, res) => {
+router.get('/x-integrations', authenticateAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
     const verified = req.query.verified === 'true';
-    
-    const integrations = await db.select().from(xIntegrations)
-      .where(verified ? 
-        (xIntegrations, { eq: xIntegrations.verified, true }) : 
-        undefined
-      )
-      .orderBy((xIntegrations, { desc: xIntegrations.lastSync }))
+
+    let query = db.select().from(xIntegrations);
+
+    if (verified) {
+      query = query.where((xIntegrations: any, { eq }: any) => eq(xIntegrations.verified, true));
+    }
+
+    const integrations = await query
+      .orderBy((xIntegrations: any, { desc }: any) => [desc(xIntegrations.lastSync)])
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
-    
+
     res.json({
       success: true,
       data: integrations,
@@ -349,32 +336,32 @@ router.get('/x-integrations', adminAuth, async (req, res) => {
 });
 
 // Get DAO transactions
-router.get('/dao-transactions', adminAuth, async (req, res) => {
+router.get('/dao-transactions', authenticateAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
     const { tokenType, startDate, endDate } = req.query;
-    
+
     let query = db.select().from(daoTransactions);
-    
+
     if (tokenType) {
-      query = query.where((daoTransactions, { eq: daoTransactions.tokenType, tokenType }));
+      query = query.where((daoTransactions: any, { eq }: any) => eq(daoTransactions.tokenType, tokenType as string));
     }
-    
+
     if (startDate) {
-      query = query.where((daoTransactions, { gte: daoTransactions.timestamp, startDate }));
+      query = query.where((daoTransactions: any, { gte }: any) => gte(daoTransactions.timestamp, startDate as string));
     }
-    
+
     if (endDate) {
-      query = query.where((daoTransactions, { lte: daoTransactions.timestamp, endDate }));
+      query = query.where((daoTransactions: any, { lte }: any) => lte(daoTransactions.timestamp, endDate as string));
     }
-    
+
     const transactions = await query
-      .orderBy((daoTransactions, { desc: daoTransactions.timestamp }))
+      .orderBy((daoTransactions: any, { desc }: any) => [desc(daoTransactions.timestamp)])
       .limit(limit)
       .offset((page - 1) * limit)
       .execute();
-    
+
     res.json({
       success: true,
       data: transactions,

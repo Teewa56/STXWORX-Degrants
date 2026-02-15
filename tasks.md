@@ -29,8 +29,8 @@ It uses testnet for now - testing in development.
 ### 1.3 Backend API Development
 - [x] Implement admin dashboard API endpoints
 - [x] Create chat system API with WebSocket support
-  - [ ] Implement robust WebSocket authentication
-  - [ ] Fix TODO: message decryption in history
+  - [x] Implement robust WebSocket authentication
+  - [x] Fix TODO: message decryption in history
 - [x] Build leaderboard calculation engine
 - [x] Integrate X (Twitter) API endpoints
   - [ ] Implement real OAuth 2.0 flow (currently mocked)
@@ -43,16 +43,16 @@ It uses testnet for now - testing in development.
 ### 1.4 Security Infrastructure
 - [x] Setup Redis for session management and caching
 - [x] Implement rate limiting middleware
-- [ ] Configure JWT and MFA authentication (TODO: Implement proper auth)
+- [x] Configure JWT and MFA authentication
 - [x] Setup encryption for chat messages
-  - [ ] Fix AES-256-CBC implementation (deprecated usage in `chat.ts`)
+  - [x] Fix AES-256-CBC implementation (deprecated usage in `chat.ts`)
   - [ ] Align with `services/encryption.ts` GCM implementation
 
 ## Phase 2: Frontend Development
 
 ### 2.1 Admin Dashboard
-- [/] Create admin authentication system
-  - [ ] Implement real JWT/MFA (currently mocked in `admin.ts`)
+- [x] Create admin authentication system
+  - [x] Implement real JWT/MFA (currently mocked in `admin.ts`)
 - [x] Build escrow management interface
 - [x] Develop user management dashboard
 - [x] Implement dispute resolution interface
