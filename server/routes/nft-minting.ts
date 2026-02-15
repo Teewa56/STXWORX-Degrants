@@ -1,15 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { 
-  users, 
-  nftAchievements, 
+import {
+  users,
+  nftAchievements,
   xIntegrations,
   projects,
   leaderboardScores,
   type NftAchievement,
   type InsertNftAchievement
 } from '@shared/schema';
+
+import { eq, and, desc, gte, sql } from 'drizzle-orm';
+import { StacksService } from '../services/stacks';
 
 const router = Router();
 
@@ -62,9 +65,9 @@ const checkEligibilitySchema = z.object({
 router.post('/check-eligibility', async (req, res) => {
   try {
     const { userId, achievementType } = checkEligibilitySchema.parse(req.body);
-    
+
     const eligibility = await checkUserEligibility(userId, achievementType);
-    
+
     res.json({
       success: true,
       data: eligibility
@@ -79,19 +82,17 @@ router.post('/check-eligibility', async (req, res) => {
 async function checkUserEligibility(userId: string, achievementType: string): Promise<any> {
   try {
     const requirements = ACHIEVEMENT_REQUIREMENTS[achievementType as keyof typeof ACHIEVEMENT_REQUIREMENTS];
-    
+
     // Check if user already has this achievement
     const existingNft = await db.select()
       .from(nftAchievements)
-      .where((nftAchievements, { 
-        and: [
-          eq(nftAchievements.userId, userId),
-          eq(nftAchievements.achievementType, achievementType)
-        ]
-      }))
+      .where(and(
+        eq(nftAchievements.userId, userId),
+        eq(nftAchievements.achievementType, achievementType)
+      ))
       .limit(1)
       .execute();
-    
+
     if (existingNft.length) {
       return {
         eligible: false,
@@ -100,28 +101,28 @@ async function checkUserEligibility(userId: string, achievementType: string): Pr
         currentStats: null
       };
     }
-    
+
     // Get user's current stats
     const userStats = await getUserStats(userId);
-    
+
     // Check X verification if required
     let xVerified = false;
     if (requirements.xVerified) {
       const xIntegration = await db.select()
         .from(xIntegrations)
-        .where((xIntegrations, { eq: xIntegrations.userId, userId }))
+        .where(eq(xIntegrations.userId, userId))
         .limit(1)
         .execute();
-      
+
       xVerified = xIntegration.length > 0 && xIntegration[0].verified;
     }
-    
+
     // Check all requirements
-    const meetsRequirements = 
+    const meetsRequirements =
       userStats.completedProjects >= requirements.minProjects &&
       userStats.reputation >= requirements.minReputation &&
       (requirements.xVerified ? xVerified : true);
-    
+
     return {
       eligible: meetsRequirements,
       reason: meetsRequirements ? 'Eligible for achievement' : 'Requirements not met',
@@ -131,12 +132,12 @@ async function checkUserEligibility(userId: string, achievementType: string): Pr
         xVerified
       },
       missingRequirements: meetsRequirements ? [] : [
-        ...(userStats.completedProjects < requirements.minProjects ? 
-          [`Need ${requirements.minProjects - userStats.completedProjects} more projects`] : []),
-        ...(userStats.reputation < requirements.minReputation ? 
-          [`Need ${requirements.minReputation - userStats.reputation} more reputation`] : []),
-        ...(requirements.xVerified && !xVerified ? 
-          ['X verification required'] : [])
+        ...(userStats.completedProjects < requirements.minProjects && userStats.completedProjects > 0) ?
+          [`Need ${requirements.minProjects - userStats.completedProjects} more projects`] : [],
+        ...(userStats.reputation < requirements.minReputation && userStats.reputation > 0) ?
+          [`Need ${requirements.minReputation - userStats.reputation} more reputation`] : [],
+        ...(requirements.xVerified && !xVerified && userStats.reputation > 0) ?
+          ['X verification required'] : []
       ]
     };
   } catch (error) {
@@ -154,10 +155,10 @@ async function getUserStats(userId: string): Promise<any> {
       totalEarnings: users.totalEarnings
     })
       .from(users)
-      .where((users, { eq: users.id, userId }))
+      .where(eq(users.id, userId))
       .limit(1)
       .execute();
-    
+
     if (!user.length) {
       return {
         reputation: 0,
@@ -165,7 +166,7 @@ async function getUserStats(userId: string): Promise<any> {
         totalEarnings: 0
       };
     }
-    
+
     return user[0];
   } catch (error) {
     console.error('Error getting user stats:', error);
@@ -182,57 +183,69 @@ router.post('/mint', async (req, res) => {
   try {
     const { achievementType, userId } = mintNftSchema.parse(req.body);
     const requestUserId = userId || req.user?.id; // TODO: Get from auth
-    
+
     // Check eligibility first
     const eligibility = await checkUserEligibility(requestUserId, achievementType);
-    
+
     if (!eligibility.eligible) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Not eligible for achievement',
-        details: eligibility 
+        details: eligibility
       });
     }
-    
+
     // TODO: Call smart contract to mint NFT
-    const tokenId = await mintAchievementNft(requestUserId, achievementType);
-    
+    const txId = await mintAchievementNft(requestUserId, achievementType);
+
     // Save to database
     const nftData: InsertNftAchievement = {
       userId: requestUserId,
-      tokenId,
+      tokenId: 0, // Will be updated after confirmation, or use 0 for now
+      txId,
       achievementType,
       mintedAt: new Date()
     };
-    
+
     const savedNft = await db.insert(nftAchievements)
       .values(nftData)
       .returning()
       .execute();
-    
+
     res.json({
       success: true,
       data: savedNft[0],
       message: `${achievementType} achievement NFT minted successfully`
     });
-    
+
   } catch (error) {
     console.error('Error minting NFT:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Mint achievement NFT via smart contract (placeholder)
-async function mintAchievementNft(userId: string, achievementType: string): Promise<number> {
+// Mint achievement NFT via smart contract
+async function mintAchievementNft(userId: string, achievementType: string): Promise<string> {
   try {
-    // TODO: Implement actual smart contract call
-    // For now, generate a mock token ID
-    const timestamp = Date.now();
-    const hash = Buffer.from(`${userId}-${achievementType}-${timestamp}`).toString('base64');
-    const tokenId = parseInt(hash.replace(/[^0-9]/g, '').slice(0, 10)) || timestamp;
-    
-    console.log(`Minting ${achievementType} NFT for user ${userId} with token ID ${tokenId}`);
-    
-    return tokenId;
+    // Get user's STX address
+    const user = await db.select({ stxAddress: users.stxAddress })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .execute();
+
+    if (!user.length || !user[0].stxAddress) {
+      throw new Error('User Stacks address not found. Please link wallet first.');
+    }
+
+    const typeId = StacksService.getAchievementTypeId(achievementType);
+    if (typeId === 0) {
+      throw new Error(`Invalid achievement type: ${achievementType}`);
+    }
+
+    console.log(`Minting ${achievementType} (ID: ${typeId}) NFT for user ${userId} at address ${user[0].stxAddress}`);
+
+    const txId = await StacksService.mintAchievementOnChain(user[0].stxAddress, typeId);
+    return txId;
   } catch (error) {
     console.error('Error minting achievement NFT:', error);
     throw error;
@@ -243,7 +256,7 @@ async function mintAchievementNft(userId: string, achievementType: string): Prom
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const nfts = await db.select({
       nftAchievements: {
         id: true,
@@ -257,11 +270,11 @@ router.get('/user/:userId', async (req, res) => {
       }
     })
       .from(nftAchievements)
-      .leftJoin(users, (nftAchievements, { eq: nftAchievements.userId, users.id }))
-      .where((nftAchievements, { eq: nftAchievements.userId, userId }))
-      .orderBy((nftAchievements, { desc: nftAchievements.mintedAt }))
+      .leftJoin(users, eq(nftAchievements.userId, users.id))
+      .where(eq(nftAchievements.userId, userId))
+      .orderBy(desc(nftAchievements.mintedAt))
       .execute();
-    
+
     res.json({
       success: true,
       data: nfts,
@@ -277,7 +290,7 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/all', async (req, res) => {
   try {
     const { page = 1, limit = 50, achievementType } = req.query;
-    
+
     let query = db.select({
       nftAchievements: {
         id: true,
@@ -292,20 +305,18 @@ router.get('/all', async (req, res) => {
       }
     })
       .from(nftAchievements)
-      .leftJoin(users, (nftAchievements, { eq: nftAchievements.userId, users.id }));
-    
+      .leftJoin(users, eq(nftAchievements.userId, users.id));
+
     if (achievementType) {
-      query = query.where((nftAchievements, { 
-        eq: nftAchievements.achievementType, achievementType 
-      }));
+      query = query.where(eq(nftAchievements.achievementType, achievementType as string));
     }
-    
+
     const nfts = await query
-      .orderBy((nftAchievements, { desc: nftAchievements.mintedAt }))
+      .orderBy(desc(nftAchievements.mintedAt))
       .limit(parseInt(limit as string))
       .offset((parseInt(page as string) - 1) * parseInt(limit as string))
       .execute();
-    
+
     res.json({
       success: true,
       data: nfts,
@@ -332,21 +343,21 @@ router.get('/stats', async (req, res) => {
       .from(nftAchievements)
       .groupBy(nftAchievements.achievementType)
       .execute();
-    
+
     // Total unique users with NFTs
     const uniqueUsers = await db.select({ count: nftAchievements.userId })
       .from(nftAchievements)
       .execute();
-    
+
     // Recent mints (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentMints = await db.select({ count: nftAchievements.id })
+
+    const recentMints = await db.select({ count: sql`count(${nftAchievements.id})` })
       .from(nftAchievements)
-      .where((nftAchievements, { gte: nftAchievements.mintedAt, sevenDaysAgo }))
+      .where(gte(nftAchievements.mintedAt, sevenDaysAgo))
       .execute();
-    
+
     res.json({
       success: true,
       data: {
@@ -369,11 +380,11 @@ router.get('/stats', async (req, res) => {
 router.post('/batch-mint', async (req, res) => {
   try {
     const { achievementType } = req.body;
-    
+
     if (!achievementType || !Object.keys(ACHIEVEMENT_REQUIREMENTS).includes(achievementType)) {
       return res.status(400).json({ error: 'Invalid achievement type' });
     }
-    
+
     // Get all users who might be eligible
     const users = await db.select({
       id: users.id,
@@ -382,26 +393,27 @@ router.post('/batch-mint', async (req, res) => {
     })
       .from(users)
       .execute();
-    
+
     let minted = 0;
     let skipped = 0;
-    
+
     for (const user of users) {
       try {
         const eligibility = await checkUserEligibility(user.id, achievementType);
-        
+
         if (eligibility.eligible) {
-          const tokenId = await mintAchievementNft(user.id, achievementType);
-          
+          const txId = await mintAchievementNft(user.id, achievementType);
+
           await db.insert(nftAchievements)
             .values({
               userId: user.id,
-              tokenId,
+              tokenId: 0,
+              txId,
               achievementType,
               mintedAt: new Date()
             })
             .execute();
-          
+
           minted++;
         } else {
           skipped++;
@@ -411,7 +423,7 @@ router.post('/batch-mint', async (req, res) => {
         skipped++;
       }
     }
-    
+
     res.json({
       success: true,
       data: {
@@ -444,7 +456,7 @@ router.get('/requirements', async (req, res) => {
 router.get('/metadata/:tokenId', async (req, res) => {
   try {
     const { tokenId } = req.params;
-    
+
     const nft = await db.select({
       nftAchievements: {
         id: true,
@@ -456,15 +468,15 @@ router.get('/metadata/:tokenId', async (req, res) => {
       }
     })
       .from(nftAchievements)
-      .leftJoin(users, (nftAchievements, { eq: nftAchievements.userId, users.id }))
-      .where((nftAchievements, { eq: nftAchievements.tokenId, parseInt(tokenId) }))
+      .leftJoin(users, eq(nftAchievements.userId, users.id))
+      .where(eq(nftAchievements.tokenId, parseInt(tokenId as string)))
       .limit(1)
       .execute();
-    
+
     if (!nft.length) {
       return res.status(404).json({ error: 'NFT not found' });
     }
-    
+
     const nftData = nft[0];
     const metadata = {
       name: `${nftData.nftAchievements.achievementType.charAt(0).toUpperCase() + nftData.nftAchievements.achievementType.slice(1)} Achievement`,
@@ -485,7 +497,7 @@ router.get('/metadata/:tokenId', async (req, res) => {
         }
       ]
     };
-    
+
     res.json({
       success: true,
       data: metadata

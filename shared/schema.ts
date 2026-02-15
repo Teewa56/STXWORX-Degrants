@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   role: text("role").default("user").notNull(), // user, admin
   mfaEnabled: boolean("mfa_enabled").default(false).notNull(),
   mfaSecret: text("mfa_secret"),
+  stxAddress: text("stx_address"), // Linked Stacks address
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -18,6 +19,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
   mfaEnabled: true,
   mfaSecret: true,
+  stxAddress: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -213,7 +215,8 @@ export type AdminAction = typeof adminActions.$inferSelect;
 export const nftAchievements = pgTable("nft_achievements", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id", { length: 36 }).references(() => users.id),
-  tokenId: integer("token_id").notNull(),
+  tokenId: integer("token_id").notNull(), // The ID returned by the contract (or initially the txid hash)
+  txId: text("tx_id"), // On-chain transaction ID
   achievementType: varchar("achievement_type", { length: 20 }).notNull(),
   mintedAt: timestamp("minted_at").defaultNow().notNull(),
 });
