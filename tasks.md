@@ -2,7 +2,7 @@
 
 ## Overview
 This document outlines all development tasks required to upgrade STXWORX-Degrants from testnet to production mainnet with enhanced features.
-It uses testnet for now- testing in development.
+It uses testnet for now - testing in development.
 
 ## Phase 1: Infrastructure & Foundation
 
@@ -29,25 +29,35 @@ It uses testnet for now- testing in development.
 ### 1.3 Backend API Development
 - [x] Implement admin dashboard API endpoints
 - [x] Create chat system API with WebSocket support
+  - [ ] Implement robust WebSocket authentication
+  - [ ] Fix TODO: message decryption in history
 - [x] Build leaderboard calculation engine
 - [x] Integrate X (Twitter) API endpoints
-- [x] Develop NFT minting API
+  - [ ] Implement real OAuth 2.0 flow (currently mocked)
+  - [ ] Connect to real X API for follower/engagement sync
+- [ ] Develop Real NFT minting API (currently mocks token IDs)
+  - [ ] Integrate Clarity smart contract calls
 - [x] Implement multi-sig transaction APIs
+  - [ ] Replace in-memory proposal storage with DB
 
 ### 1.4 Security Infrastructure
 - [x] Setup Redis for session management and caching
 - [x] Implement rate limiting middleware
-- [x] Configure JWT and MFA authentication
+- [ ] Configure JWT and MFA authentication (TODO: Implement proper auth)
 - [x] Setup encryption for chat messages
+  - [ ] Fix AES-256-CBC implementation (deprecated usage in `chat.ts`)
+  - [ ] Align with `services/encryption.ts` GCM implementation
 
 ## Phase 2: Frontend Development
 
 ### 2.1 Admin Dashboard
-- [x] Create admin authentication system
+- [/] Create admin authentication system
+  - [ ] Implement real JWT/MFA (currently mocked in `admin.ts`)
 - [x] Build escrow management interface
 - [x] Develop user management dashboard
 - [x] Implement dispute resolution interface
-- [x] Build transaction approval workflow
+- [/] Build transaction approval workflow
+  - [ ] Integrate real Multi-sig execution (currently simulated)
 - [x] Add audit log viewer
 - [x] Create system settings panel
 
@@ -71,19 +81,23 @@ It uses testnet for now- testing in development.
 - [x] Add historical performance tracking
 
 ### 2.4 X (Twitter) Integration
-- [x] Build X OAuth authentication flow
-- [x] Create profile verification system
+- [/] Build X OAuth authentication flow (TODO: Real OAuth 2.0)
+- [/] Create profile verification system
+  - [ ] Implement real server-side verification
 - [x] Implement social sharing features
 - [x] Add X handle display on profiles
-- [x] Create achievement auto-posting
+- [/] Create achievement auto-posting
+  - [ ] Implement real X API posting (currently mocked on frontend)
 - [x] Build social reputation scoring
-- [x] Add X follower verification
+- [/] Add X follower verification
+  - [ ] Implement real-time sync with backend
 - [x] Create social settings panel
 
 
 ### 2.5 NFT Achievement System
 - [x] Design NFT badge display components
-- [x] Create achievement minting interface
+- [/] Create achievement minting interface
+  - [ ] Connect to real backend minting (currently returns mock tokens)
 - [x] Build achievement gallery showcase
 - [x] Implement achievement trading marketplace
 - [x] Create achievement rarity system
@@ -94,7 +108,7 @@ It uses testnet for now- testing in development.
 - [x] Add achievement criteria display
 - [x] Create transfer restriction UI
 - [x] Build achievement tracking system
-- [x] Add IPFS integration for assets
+- [/] Add IPFS integration for assets (TODO: Implement real IPFS uploading)
 
 ## Phase 3: Smart Contract Deployment
 
@@ -109,10 +123,10 @@ It uses testnet for now- testing in development.
 - [ ] Load test contract interactions
 
 ### 3.2 Testnet Deployment
-- [ ] Deploy `freelance-data.clar` contract
-- [ ] Deploy `freelance-logic.clar` contract
-- [ ] Deploy `freelance-security.clar` contract
-- [ ] Deploy NFT achievement contract
+- [x] Deploy `freelance-data.clar` contract
+- [x] Deploy `freelance-logic.clar` contract
+- [x] Deploy `freelance-security.clar` contract
+- [x] Deploy NFT achievement contract
 - [ ] Setup multi-sig wallet
 - [ ] Initialize DAO treasury
 - [ ] Configure contract permissions
