@@ -8,7 +8,7 @@ Ensure you have the following installed:
 - **Node.js** (v18+)
 - **PostgreSQL** (Local or [Neon](https://neon.tech))
 - **Clarinet** (Stacks smart contract toolchain)
-- **Hiro Wallet** (Browser extension for manual E2E tests)
+- **Bitcoin Wallet** (Browser extension wallet like leather or xverse for manual E2E tests)
 
 ---
 
