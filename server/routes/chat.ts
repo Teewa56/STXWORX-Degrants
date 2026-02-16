@@ -321,4 +321,63 @@ router.delete('/messages/:messageId', authenticateToken, async (req: any, res) =
   }
 });
 
+// Send message (REST)
+router.post('/messages', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId, content, replyTo } = req.body;
+    const userId = req.user.id;
+
+    if (!projectId || !content) {
+      return res.status(400).json({ error: 'Missing projectId or content' });
+    }
+
+    const project = await storage.getProject(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (project.clientAddress !== userId && project.freelancerAddress !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Ensure chat key exists for the project
+    let chatKey = await ChatEncryptionService.getChatKey(projectId);
+    if (!chatKey) {
+      chatKey = await ChatEncryptionService.generateChatKey(projectId);
+    }
+
+    // Encrypt message for persistent storage
+    const encryptedContent = await ChatEncryptionService.encryptMessageForUser(
+      content,
+      projectId,
+      userId
+    );
+
+    // Save to database
+    const message = await storage.createChatMessage({
+      projectId,
+      senderId: userId,
+      encryptedContent
+    });
+
+    // Broadcast to socket if available (best effort)
+    if (io) {
+      const broadcastData = {
+        id: message.id,
+        projectId,
+        senderId: userId,
+        content,
+        timestamp: message.timestamp,
+        replyTo
+      };
+      io.to(`project-${projectId}`).emit('new-message', broadcastData);
+    }
+
+    res.status(201).json({ success: true, data: message });
+  } catch (error) {
+    console.error('Error sending message via REST:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

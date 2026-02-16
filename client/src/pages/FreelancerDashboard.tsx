@@ -3,8 +3,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, Coins, TrendingUp, Clock, CheckCircle2, Upload, FileText, Briefcase } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Zap, Coins, TrendingUp, Clock, CheckCircle2, Upload, FileText, Briefcase, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { type Project, type Application } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
+import ChatWidget from '@/components/chat/ChatWidget';
 
 // Helper function to get token decimals
 const getTokenDecimals = (tokenType: string): number => {
@@ -42,6 +43,7 @@ export default function FreelancerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [activeChat, setActiveChat] = useState<{ projectId: string; projectTitle: string; otherUserName: string; otherUserRole: string } | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<{
     projectId: string;
     onChainId: number | null;
@@ -171,6 +173,12 @@ export default function FreelancerDashboard() {
                       <ActiveProjectCard
                         key={project.id}
                         project={project}
+                        onChatClick={(p) => setActiveChat({
+                          projectId: p.id,
+                          projectTitle: p.milestone1Title || 'Untitled',
+                          otherUserName: p.clientAddress, // Freelancer sees client address/username
+                          otherUserRole: 'client'
+                        })}
                         onComplete={(milestoneNum) => {
                           setSelectedMilestone({
                             projectId: project.id,
@@ -260,6 +268,15 @@ export default function FreelancerDashboard() {
         </DialogContent>
       </Dialog>
       <Footer />
+      {activeChat && (
+        <ChatWidget
+          key={activeChat.projectId}
+          projectId={activeChat.projectId}
+          projectTitle={activeChat.projectTitle}
+          otherUserName={activeChat.otherUserName}
+          otherUserRole="client"
+        />
+      )}
     </div>
   );
 }
@@ -282,7 +299,7 @@ function ApplicationStatusCard({ application }: { application: EnrichedApplicati
   );
 }
 
-function ActiveProjectCard({ project, onComplete }: { project: Project; onComplete: (m: number) => void }) {
+function ActiveProjectCard({ project, onComplete, onChatClick }: { project: Project; onComplete: (m: number) => void; onChatClick: (p: Project) => void }) {
   // Simplified card, logic similar to previous implementation but focused on actions
   return (
     <Card className="hover:border-primary/50 transition-colors">
@@ -325,6 +342,11 @@ function ActiveProjectCard({ project, onComplete }: { project: Project; onComple
           })}
         </div>
       </CardContent>
-    </Card>
+      <CardFooter>
+        <Button variant="secondary" className="w-full" onClick={() => onChatClick(project)}>
+          <MessageSquare className="w-4 h-4 mr-2" /> Chat with Client
+        </Button>
+      </CardFooter>
+    </Card >
   )
 }

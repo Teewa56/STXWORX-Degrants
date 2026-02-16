@@ -23,6 +23,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthPage from "@/pages/AuthPage";
 import Onboarding from "@/pages/Onboarding";
 import Profile from "@/pages/Profile";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function Router() {
   return (
@@ -57,7 +58,9 @@ function App() {
           <div className="dark relative">
             <StarfieldBackground />
             <Toaster />
-            <Router />
+            <ErrorBoundary>
+              <Router />
+            </ErrorBoundary>
           </div>
         </TooltipProvider>
       </AuthProvider>

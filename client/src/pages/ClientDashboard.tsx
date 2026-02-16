@@ -13,12 +13,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertProjectSchema, type Project, type Category, type Application } from '@shared/schema';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
 import type { TokenType } from '@/components/TokenSelector';
+import ChatWidget from '@/components/chat/ChatWidget';
 
 // Extended type for enriched applications
 type EnrichedApplication = Application & {
@@ -55,6 +56,7 @@ export default function ClientDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [activeChat, setActiveChat] = useState<{ projectId: string; projectTitle: string; otherUserName: string; otherUserRole: string } | null>(null);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectFormSchema),
@@ -163,7 +165,16 @@ export default function ClientDashboard() {
                 ) : (
                   <div className="grid gap-4">
                     {myProjects.map(project => (
-                      <ProjectRow key={project.id} project={project} />
+                      <ProjectRow
+                        key={project.id}
+                        project={project}
+                        onChatClick={(p, name) => setActiveChat({
+                          projectId: p.id,
+                          projectTitle: p.milestone1Title || 'Untitled',
+                          otherUserName: name,
+                          otherUserRole: 'freelancer'
+                        })}
+                      />
                     ))}
                   </div>
                 )}
@@ -339,11 +350,20 @@ export default function ClientDashboard() {
         </div>
       </main>
       <Footer />
+      {activeChat && (
+        <ChatWidget
+          key={activeChat.projectId} // Force re-mount on project change
+          projectId={activeChat.projectId}
+          projectTitle={activeChat.projectTitle}
+          otherUserName={activeChat.otherUserName}
+          otherUserRole="freelancer"
+        />
+      )}
     </div>
   );
 }
 
-function ProjectRow({ project }: { project: Project }) {
+function ProjectRow({ project, onChatClick }: { project: Project; onChatClick: (project: Project, freelancerName: string) => void }) {
   const { data: applications } = useQuery<EnrichedApplication[]>({
     queryKey: [`/api/projects/${project.id}/applications`],
     enabled: !!project.id
@@ -381,6 +401,13 @@ function ProjectRow({ project }: { project: Project }) {
             <p className="text-sm font-medium">Freelancer Hired</p>
             <p className="text-xs text-muted-foreground">Address: {project.freelancerAddress}</p>
             <p className="text-xs text-muted-foreground">On-Chain ID: {project.onChainId} (Tx: {project.txId})</p>
+            <Button size="sm" variant="outline" className="mt-2" onClick={() => {
+              const app = applications?.find(a => a.freelancer?.stxAddress === project.freelancerAddress);
+              const name = app?.freelancer?.username || project.freelancerAddress || "Freelancer";
+              onChatClick(project, name);
+            }}>
+              <MessageSquare className="w-4 h-4 mr-2" /> Chat with Freelancer
+            </Button>
           </div>
         )}
       </CardContent>
