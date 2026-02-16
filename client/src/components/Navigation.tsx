@@ -105,68 +105,68 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
               </Button>
             </Link>
           )}
-        <WalletConnect />
-      </div>
+          {user && <WalletConnect />}
+        </div>
 
-      {/* Mobile Menu Button */}
-      <div className="md:hidden flex items-center gap-2">
-        <WalletConnect />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          data-testid="button-mobile-menu"
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-    </div>
-
-      {/* Mobile Menu */ }
-  {
-    mobileMenuOpen && (
-      <div className="md:hidden border-t border-border bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4 flex flex-col gap-2">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Home
-            </Button>
-          </Link>
-          <Link href="/browse">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Browse Projects
-            </Button>
-          </Link>
-          <Link href="/client">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Client Dashboard
-            </Button>
-          </Link>
-          <Link href="/freelancer">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Freelancer Dashboard
-            </Button>
-          </Link>
+        {/* Mobile Menu Button */}
+        <div className="md:hidden flex items-center gap-2">
+          {user && <WalletConnect />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            data-testid="button-mobile-menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
       </div>
-    )
-  }
+
+      {/* Mobile Menu */}
+      {
+        mobileMenuOpen && (
+          <div className="md:hidden border-t border-border bg-background/95 backdrop-blur">
+            <div className="container mx-auto px-4 py-4 flex flex-col gap-2">
+              <Link href="/">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Home
+                </Button>
+              </Link>
+              <Link href="/browse">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Browse Projects
+                </Button>
+              </Link>
+              <Link href="/client">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Client Dashboard
+                </Button>
+              </Link>
+              <Link href="/freelancer">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Freelancer Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )
+      }
     </header >
   );
 }

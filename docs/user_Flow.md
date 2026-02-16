@@ -100,7 +100,7 @@ Admins oversee platform health and handle disputes.
 2.  **User Oversight**: View list of all users, their verification status, and recent activity.
 3.  **Project Oversight**: Monitor active escrows and platform volume.
 
-### B. Dispute Resolution (Future V2.1)
+### B. Dispute Resolution (Future implementation)
 1.  If a Client/Freelancer dispute arises:
     -   Admin reviews the Chat History and Evidence.
     -   Admin interacts with the Dispute Contract to override the escrow lock (releasing funds to either party or splitting).
