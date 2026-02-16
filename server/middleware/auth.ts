@@ -346,7 +346,10 @@ export class AuthService {
       });
 
       // Check if MFA is required
+      console.log(`Login attempt for ${username}: mfaEnabled=${user.mfaEnabled}, mfaToken=${mfaToken ? 'provided' : 'missing'}`);
+
       if (user.mfaEnabled && !mfaToken) {
+        console.log('MFA required but not provided');
         return {
           accessToken: '',
           refreshToken: '',

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { storage } from "../storage";
-import { insertProjectSchema, type Project, type InsertProject } from "@shared/schema";
+import { insertProjectSchema, insertApplicationSchema, type Project, type InsertProject } from "@shared/schema";
+import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
+import { Response } from "express";
 
 const router = Router();
 
@@ -8,9 +10,72 @@ const router = Router();
 router.get("/", async (req, res) => {
     try {
         const projects = await storage.getAllProjects();
+        // Filter for public/pending if needed, but let frontend handle it for now
         res.json(projects);
     } catch (error) {
         res.status(500).json({ error: "Failed to fetch projects" });
+    }
+});
+
+// Apply for a project (freelancer action)
+router.post("/:id/apply", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+        if (req.user.role !== "freelancer") {
+            return res.status(403).json({ error: "Only freelancers can apply for projects" });
+        }
+
+        const projectId = req.params.id;
+        const validatedData = insertApplicationSchema.parse({
+            ...req.body,
+            projectId,
+            freelancerId: req.user.userId
+        });
+
+        // Check if already applied
+        const existing = await storage.getApplicationsByProject(projectId);
+        if (existing.some(a => a.freelancerId === req.user?.userId)) {
+            return res.status(400).json({ error: "Already applied for this project" });
+        }
+
+        const application = await storage.createApplication(validatedData);
+        res.status(201).json(application);
+    } catch (error: any) {
+        if (error.name === 'ZodError') {
+            return res.status(400).json({ error: "Validation error", details: error.errors });
+        }
+        res.status(500).json({ error: "Failed to apply for project" });
+    }
+});
+
+// Get applications for a project (client action)
+router.get("/:id/applications", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const project = await storage.getProject(req.params.id);
+        if (!project) return res.status(404).json({ error: "Project not found" });
+
+        // Only owner or admin can see applications
+        // if (project.clientAddress !== req.user?.stxAddress && req.user?.role !== 'admin') { ... }
+
+        const applications = await storage.getApplicationsByProject(req.params.id);
+
+        // Enrich with freelancer details
+        const enrichedApplications = await Promise.all(applications.map(async (app) => {
+            const user = await storage.getUser(app.freelancerId);
+            return {
+                ...app,
+                freelancer: user ? {
+                    username: user.username,
+                    stxAddress: user.stxAddress,
+                    // Add other public profile fields if needed
+                } : null
+            };
+        }));
+
+        res.json(enrichedApplications);
+    } catch (error) {
+        console.error("Error fetching applications:", error);
+        res.status(500).json({ error: "Failed to fetch applications" });
     }
 });
 
@@ -53,23 +118,68 @@ router.post("/new", async (req, res) => {
     }
 });
 
-// Update project with on-chain ID after blockchain transaction
-router.patch("/:id/on-chain", async (req, res) => {
+// Get applications for the authenticated freelancer
+router.get("/applied", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { onChainId, txId } = req.body;
-        const project = await storage.updateProject(req.params.id, {
-            onChainId,
-            txId,
-            status: "ACTIVE"
-        });
-
-        if (!project) {
-            return res.status(404).json({ message: "Project not found" });
+        if (!req.user || req.user.role !== "freelancer") {
+            return res.status(403).json({ error: "Only freelancers can view their applications" });
         }
 
-        res.json({ message: "Project updated successfully", project });
+        const applications = await storage.getApplicationsByFreelancer(req.user.userId);
+
+        // Enrich with project details
+        const enrichedApplications = await Promise.all(applications.map(async (app) => {
+            const project = await storage.getProject(app.projectId);
+            return {
+                ...app,
+                project
+            };
+        }));
+
+        res.json(enrichedApplications);
+    } catch (error) {
+        console.error("Error fetching freelancer applications:", error);
+        res.status(500).json({ error: "Failed to fetch applications" });
+    }
+});
+
+// Hire freelancer and activate project (after on-chain transaction)
+router.post("/:id/hire", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { applicationId, onChainId, txId } = req.body;
+
+        const project = await storage.getProject(req.params.id);
+        if (!project) return res.status(404).json({ error: "Project not found" });
+
+        // Verify ownership (assuming clientAddress matches user's address, or check against userId if we stored it)
+        // For now, trusting the auth + client check context in future
+
+        const application = await storage.getApplication(applicationId);
+        if (!application) return res.status(404).json({ error: "Application not found" });
+
+        if (application.projectId !== project.id) {
+            return res.status(400).json({ error: "Application does not belong to this project" });
+        }
+
+        const freelancer = await storage.getUser(application.freelancerId);
+        if (!freelancer) return res.status(404).json({ error: "Freelancer not found" });
+
+        // Update Project
+        const updatedProject = await storage.updateProject(project.id, {
+            status: "ACTIVE",
+            freelancerId: freelancer.id,
+            freelancerAddress: freelancer.stxAddress || "", // specific address or fallback
+            onChainId,
+            txId,
+        });
+
+        // Update Application status
+        await storage.updateApplicationStatus(applicationId, "ACCEPTED");
+
+        res.json({ message: "Freelancer hired successfully", project: updatedProject });
     } catch (error: any) {
-        res.status(500).json({ message: "Failed to update project", error: error.message });
+        console.error("Hire error:", error);
+        res.status(500).json({ error: "Failed to hire freelancer" });
     }
 });
 

@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject, type XIntegration, type InsertXIntegration, type DaoProposal, type InsertDaoProposal, type DaoApproval, type InsertDaoApproval, type AdminAction, type InsertAdminAction, type ChatMessage, type InsertChatMessage } from "@shared/schema";
+import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject, type XIntegration, type InsertXIntegration, type DaoProposal, type InsertDaoProposal, type DaoApproval, type InsertDaoApproval, type AdminAction, type InsertAdminAction, type ChatMessage, type InsertChatMessage, type Application, type InsertApplication } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -54,6 +54,13 @@ export interface IStorage {
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   deleteChatMessage(messageId: string): Promise<void>;
   getChatMessage(messageId: string): Promise<ChatMessage | undefined>;
+
+  // Application methods
+  getApplication(id: string): Promise<Application | undefined>;
+  getApplicationsByProject(projectId: string): Promise<Application[]>;
+  getApplicationsByFreelancer(freelancerId: string): Promise<Application[]>;
+  createApplication(application: InsertApplication): Promise<Application>;
+  updateApplicationStatus(id: string, status: string): Promise<Application | undefined>;
 }
 
 export class NeonStorage implements IStorage {
@@ -192,6 +199,9 @@ export class NeonStorage implements IStorage {
     const projectData = {
       ...insertProject,
       clientAddress: insertProject.clientAddress || "",
+      freelancerAddress: insertProject.freelancerAddress || null,
+      freelancerId: insertProject.freelancerId || null,
+      visibility: insertProject.visibility || "public",
       platformFee: insertProject.platformFee || 0,
       status: "PENDING",
       milestone1Title: insertProject.milestone1Title || "Milestone 1",
@@ -348,6 +358,35 @@ export class NeonStorage implements IStorage {
   async getChatMessage(messageId: string): Promise<ChatMessage | undefined> {
     const { chatMessages } = await import("@shared/schema");
     const [result] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId));
+    return result;
+  }
+
+  // Application methods
+  async getApplication(id: string): Promise<Application | undefined> {
+    const { applications } = await import("@shared/schema");
+    const [result] = await db.select().from(applications).where(eq(applications.id, id));
+    return result;
+  }
+
+  async getApplicationsByProject(projectId: string): Promise<Application[]> {
+    const { applications } = await import("@shared/schema");
+    return await db.select().from(applications).where(eq(applications.projectId, projectId));
+  }
+
+  async getApplicationsByFreelancer(freelancerId: string): Promise<Application[]> {
+    const { applications } = await import("@shared/schema");
+    return await db.select().from(applications).where(eq(applications.freelancerId, freelancerId));
+  }
+
+  async createApplication(application: InsertApplication): Promise<Application> {
+    const { applications } = await import("@shared/schema");
+    const [result] = await db.insert(applications).values(application).returning();
+    return result;
+  }
+
+  async updateApplicationStatus(id: string, status: string): Promise<Application | undefined> {
+    const { applications } = await import("@shared/schema");
+    const [result] = await db.update(applications).set({ status }).where(eq(applications.id, id)).returning();
     return result;
   }
 }

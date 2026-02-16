@@ -8,7 +8,8 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   salt: text("salt").notNull().default(""), // Salt for password hashing
-  role: text("role").default("user").notNull(), // user, admin
+  role: text("role").default("client").notNull(), // admin, client, freelancer
+  onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
   mfaEnabled: boolean("mfa_enabled").default(false).notNull(),
   mfaSecret: text("mfa_secret"),
   stxAddress: text("stx_address"), // Linked Stacks address
@@ -82,7 +83,9 @@ export const projects = pgTable("projects", {
   onChainId: integer("on_chain_id"), // ID from smart contract (references project-counter in contract)
   txId: text("tx_id"), // Transaction ID from the blockchain
   clientAddress: text("client_address").notNull(),
-  freelancerAddress: text("freelancer_address").notNull(),
+  freelancerAddress: text("freelancer_address"), // Nullable for open jobs
+  freelancerId: varchar("freelancer_id", { length: 36 }), // Link to user account
+  visibility: text("visibility").default("public").notNull(), // public, private
   totalAmount: integer("total_amount").notNull(), // Total STX in microstacks
   tokenType: text("token_type").default("STX").notNull(), // STX or sBTC
   status: text("status").default("PENDING").notNull(), // PENDING, ACTIVE, UNDER_REVIEW, COMPLETED
@@ -184,7 +187,8 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   milestone2Amount: z.number().int("Milestone amount must be an integer (microstacks)").positive("Amount must be positive"),
   milestone3Amount: z.number().int("Milestone amount must be an integer (microstacks)").positive("Amount must be positive"),
   milestone4Amount: z.number().int("Milestone amount must be an integer (microstacks)").positive("Amount must be positive"),
-  freelancerAddress: z.string().min(34, "Invalid Stacks address").max(50, "Invalid Stacks address"),
+  freelancerAddress: z.string().min(34, "Invalid Stacks address").max(50, "Invalid Stacks address").optional(),
+  freelancerId: z.string().optional(),
   clientAddress: z.string().min(34, "Invalid Stacks address").max(50, "Invalid Stacks address").optional(),
   tokenType: z.enum(["STX", "sBTC"]).default("STX"),
   description: z.string().optional(),
@@ -203,7 +207,27 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   milestone4Title: z.string().optional(),
   milestone4Description: z.string().optional(),
   milestone4Attachment: z.string().optional(),
+  visibility: z.enum(["public", "private"]).default("public"),
 });
+
+export const applications = pgTable("applications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
+  freelancerId: varchar("freelancer_id", { length: 36 }).references(() => users.id).notNull(),
+  bidAmount: integer("bid_amount").notNull(),
+  proposal: text("proposal").notNull(),
+  status: text("status").default("PENDING").notNull(), // PENDING, ACCEPTED, REJECTED
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertApplicationSchema = createInsertSchema(applications).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+});
+
+export type InsertApplication = z.infer<typeof insertApplicationSchema>;
+export type Application = typeof applications.$inferSelect;
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;

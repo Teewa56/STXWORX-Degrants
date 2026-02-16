@@ -18,14 +18,23 @@ import TermsOfService from "@/pages/TermsOfService";
 import Contact from "@/pages/Contact";
 import NotFound from "@/pages/not-found";
 
+import { AuthProvider } from "@/hooks/use-auth";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import AuthPage from "@/pages/AuthPage";
+import Onboarding from "@/pages/Onboarding";
+import Profile from "@/pages/Profile";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/onboarding" component={Onboarding} />
+      <Route path="/profile" component={Profile} />
       <Route path="/browse" component={Browse} />
-      <Route path="/client" component={ClientDashboard} />
-      <Route path="/freelancer" component={FreelancerDashboard} />
-      <Route path="/admin" component={AdminSetup} />
+      <ProtectedRoute path="/client" component={ClientDashboard} allowedRoles={["client"]} />
+      <ProtectedRoute path="/freelancer" component={FreelancerDashboard} allowedRoles={["freelancer"]} />
+      <ProtectedRoute path="/admin" component={AdminSetup} allowedRoles={["admin"]} />
       <Route path="/faq" component={FAQ} />
       <Route path="/about" component={About} />
       <Route path="/privacy" component={PrivacyPolicy} />
@@ -43,13 +52,15 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="dark relative">
-          <StarfieldBackground />
-          <Toaster />
-          <Router />
-        </div>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <div className="dark relative">
+            <StarfieldBackground />
+            <Toaster />
+            <Router />
+          </div>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
