@@ -90,9 +90,24 @@ export default function ClientDashboard() {
 
       // Calculate milestone amounts as integers (in micro-units)
       const totalMicroUnits = Math.round(roundedAmount * decimals);
+
+      // Calculate split: 90% to freelancer (milestones), 10% platform fee
+      // Note: The contract handles the 10% fee on release, so we lock 100% 
+      // but display the breakdown clearly.
+      const platformFee = Math.floor(totalMicroUnits * 0.1);
+      const freelancerNetTotal = totalMicroUnits; // Full amount locked in contract
+
       const milestoneAmount = Math.floor(totalMicroUnits / 4);
       const remainder = totalMicroUnits - (milestoneAmount * 4);
-      const lastMilestoneAmount = milestoneAmount + remainder;      // Step 1: Create project in database with milestone descriptions
+      const lastMilestoneAmount = milestoneAmount + remainder;
+
+      console.log('💰 Payment Split:', {
+        total: totalMicroUnits,
+        platformFee: platformFee,
+        freelancerShare: totalMicroUnits - platformFee
+      });
+
+      // Step 1: Create project in database with milestone descriptions
       const response = await apiRequest('POST', '/api/projects/new', {
         clientAddress: data.clientAddress,
         freelancerAddress: data.freelancerAddress,
@@ -101,6 +116,7 @@ export default function ClientDashboard() {
         description: data.description,
         category: data.category,
         subcategory: data.subcategory,
+        platformFee: platformFee,
         milestone1Amount: milestoneAmount,
         milestone1Description: data.milestone1Description,
         milestone1Attachment: data.milestone1Attachment,
@@ -114,7 +130,7 @@ export default function ClientDashboard() {
         milestone4Description: data.milestone4Description,
         milestone4Attachment: data.milestone4Attachment,
       });
-      const projectResult = response;
+      const projectResult = await response.json();
       console.log('✅ Step 1 complete: Project saved to database', projectResult);
 
       // Show toast that wallet approval is needed
@@ -159,14 +175,14 @@ export default function ClientDashboard() {
                 console.log('On-chain project ID is safe integer:', Number.isSafeInteger(onChainProjectId));
 
                 // Step 3: Update project with on-chain details and mark all milestones as funded
-                await apiRequest('PATCH', `/api/projects/${projectResult.project._id}/on-chain`, {
+                await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/on-chain`, {
                   onChainId: onChainProjectId,
                   txId: createTxData.txId
                 });
 
                 // Mark all milestones as funded since money is in contract
                 for (let i = 1; i <= 4; i++) {
-                  await apiRequest('PATCH', `/api/projects/${projectResult.project._id}/milestone/${i}/fund`, {});
+                  await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/milestone/${i}/fund`, {});
                 }
 
                 toast({

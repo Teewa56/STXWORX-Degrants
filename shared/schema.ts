@@ -89,6 +89,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   category: text("category"),
   subcategory: text("subcategory"),
+  platformFee: integer("platform_fee").default(0).notNull(), // 10% platform fee in microstacks
 
   // Milestone 1
   milestone1Amount: integer("milestone_1_amount").notNull(),
@@ -189,6 +190,7 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   description: z.string().optional(),
   category: z.string().optional(),
   subcategory: z.string().optional(),
+  platformFee: z.number().int().nonnegative().default(0),
   milestone1Title: z.string().optional(),
   milestone1Description: z.string().optional(),
   milestone1Attachment: z.string().optional(),

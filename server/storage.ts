@@ -192,6 +192,7 @@ export class NeonStorage implements IStorage {
     const projectData = {
       ...insertProject,
       clientAddress: insertProject.clientAddress || "",
+      platformFee: insertProject.platformFee || 0,
       status: "PENDING",
       milestone1Title: insertProject.milestone1Title || "Milestone 1",
       milestone2Title: insertProject.milestone2Title || "Milestone 2",
