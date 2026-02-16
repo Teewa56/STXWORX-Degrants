@@ -114,8 +114,7 @@ export default function ClientDashboard() {
         milestone4Description: data.milestone4Description,
         milestone4Attachment: data.milestone4Attachment,
       });
-
-      const projectResult = await response.json();
+      const projectResult = response;
       console.log('✅ Step 1 complete: Project saved to database', projectResult);
 
       // Show toast that wallet approval is needed
@@ -160,14 +159,14 @@ export default function ClientDashboard() {
                 console.log('On-chain project ID is safe integer:', Number.isSafeInteger(onChainProjectId));
 
                 // Step 3: Update project with on-chain details and mark all milestones as funded
-                await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/on-chain`, {
+                await apiRequest('PATCH', `/api/projects/${projectResult.project._id}/on-chain`, {
                   onChainId: onChainProjectId,
                   txId: createTxData.txId
                 });
 
                 // Mark all milestones as funded since money is in contract
                 for (let i = 1; i <= 4; i++) {
-                  await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/milestone/${i}/fund`, {});
+                  await apiRequest('PATCH', `/api/projects/${projectResult.project._id}/milestone/${i}/fund`, {});
                 }
 
                 toast({

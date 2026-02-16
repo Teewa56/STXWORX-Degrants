@@ -42,6 +42,7 @@ router.post("/new", async (req, res) => {
         };
 
         const project = await storage.createProject(projectData);
+        console.log('✅ Project created successfully:', project);
         res.status(201).json({ message: "Project created successfully", project });
     } catch (error: any) {
         console.error('❌ Error creating project:', error);
