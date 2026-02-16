@@ -50,7 +50,7 @@ export default function FreelancerDashboard() {
     queryKey: ['/api/projects'],
     enabled: !!walletAddress,
   });
-  
+
   // Debug: Log projects data
   if (projects) {
     console.log('📋 All Projects:', projects);
@@ -65,15 +65,15 @@ export default function FreelancerDashboard() {
   }
 
   const completeEscrowMutation = useMutation({
-    mutationFn: async ({ 
-      id, 
-      onChainId, 
-      milestoneNum, 
-      completionDescription, 
-      completionAttachment 
-    }: { 
-      id: string; 
-      onChainId: number | null; 
+    mutationFn: async ({
+      id,
+      onChainId,
+      milestoneNum,
+      completionDescription,
+      completionAttachment
+    }: {
+      id: string;
+      onChainId: number | null;
       milestoneNum: number;
       completionDescription?: string;
       completionAttachment?: string;
@@ -83,20 +83,20 @@ export default function FreelancerDashboard() {
           reject(new Error('No on-chain ID found for this project'));
           return;
         }
-        
+
         console.log('🔍 Complete Milestone Debug:');
         console.log('Database ID:', id);
         console.log('On-Chain ID:', onChainId);
         console.log('Milestone Number:', milestoneNum);
         console.log('On-Chain ID type:', typeof onChainId);
         console.log('On-Chain ID is safe integer:', Number.isSafeInteger(onChainId));
-        
+
         // Validate on-chain ID is a reasonable value (should be small sequential number)
         if (!Number.isSafeInteger(onChainId) || onChainId < 0 || onChainId > 100000) {
           reject(new Error(`Invalid on-chain ID: ${onChainId}. This project may have corrupted data. Please create a new project.`));
           return;
         }
-        
+
         import('@/lib/stacks').then(({ markCompleteOnChain }) => {
           markCompleteOnChain(
             onChainId,
@@ -109,14 +109,14 @@ export default function FreelancerDashboard() {
                   completionAttachment,
                   milestoneNum
                 });
-                
-                const result = await apiRequest('PATCH', `/api/projects/${id}/milestone/${milestoneNum}/complete`, {
+
+                apiRequest('PATCH', `/api/projects/${id}/milestone/${milestoneNum}/complete`, {
                   completionDescription,
                   completionAttachment,
-                });
-                
-                console.log('📥 Server response:', result);
-                resolve({ ...result, txId: txData.txId });
+                }).then(res => res.json()).then(result => {
+                  console.log('📥 Server response:', result);
+                  resolve({ ...result.updated, txId: txData.txId });
+                }).catch(reject);
               } catch (err) {
                 reject(err);
               }
@@ -149,7 +149,7 @@ export default function FreelancerDashboard() {
   });
 
   const myEscrows = projects?.filter(e => e.freelancerAddress === walletAddress) || [];
-  
+
   // Calculate totals per token type
   const totalLockedSTX = microStacksToStx(
     myEscrows
@@ -305,7 +305,7 @@ export default function FreelancerDashboard() {
                   {myEscrows.length} total
                 </Badge>
               </div>
-              
+
               {isLoading ? (
                 <Card>
                   <CardContent className="py-12 text-center">
@@ -326,8 +326,8 @@ export default function FreelancerDashboard() {
                     <p className="text-sm text-muted-foreground mt-2">
                       Share your wallet address with clients to start receiving projects!
                     </p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="mt-6"
                       onClick={() => {
                         navigator.clipboard.writeText(walletAddress || '');
@@ -341,19 +341,18 @@ export default function FreelancerDashboard() {
               ) : (
                 <div className="grid md:grid-cols-2 gap-6">
                   {myEscrows.map((project) => (
-                    <Card 
-                      key={project.id} 
+                    <Card
+                      key={project.id}
                       className="group hover:border-primary/40 transition-all hover:shadow-lg hover:shadow-primary/5"
                       data-testid={`card-offer-${project.id}`}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                              project.status === 'COMPLETED'
-                                ? 'bg-green-500/20'
-                                : 'bg-primary/20'
-                            }`}>
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${project.status === 'COMPLETED'
+                              ? 'bg-green-500/20'
+                              : 'bg-primary/20'
+                              }`}>
                               {project.status === 'COMPLETED' ? (
                                 <Coins className="h-6 w-6 text-green-500" />
                               ) : (
@@ -365,8 +364,8 @@ export default function FreelancerDashboard() {
                                 <CardTitle className="text-3xl font-bold">
                                   {microStacksToStx(project.totalAmount, project.tokenType).toFixed(2)} {project.tokenType}
                                 </CardTitle>
-                                <Badge 
-                                  variant="outline" 
+                                <Badge
+                                  variant="outline"
                                   className={`text-xs font-bold ${project.tokenType === 'STX' ? 'border-primary text-primary' : 'border-orange-500 text-orange-500'}`}
                                   data-testid={`badge-token-${project.id}`}
                                 >
@@ -457,7 +456,7 @@ export default function FreelancerDashboard() {
                                 const attachment = project[`milestone${num}Attachment`];
                                 const complete = project[`milestone${num}Complete`];
                                 const released = project[`milestone${num}Released`];
-                                
+
                                 if (description) {
                                   return (
                                     <div key={`desc-${num}`} className="bg-muted/50 rounded-lg p-3">
@@ -471,9 +470,9 @@ export default function FreelancerDashboard() {
                                       {attachment && (
                                         <div className="mt-2 flex items-center gap-1 text-xs">
                                           <FileText className="h-3 w-3 text-primary" />
-                                          <a 
-                                            href={attachment} 
-                                            target="_blank" 
+                                          <a
+                                            href={attachment}
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-primary hover:underline"
                                           >
@@ -496,7 +495,7 @@ export default function FreelancerDashboard() {
                                   const complete = project[`milestone${milestoneNum}Complete`];
                                   const released = project[`milestone${milestoneNum}Released`];
                                   const canComplete = funded && !complete && !released;
-                                  
+
                                   return (
                                     <Button
                                       key={milestoneNum}
@@ -519,7 +518,7 @@ export default function FreelancerDashboard() {
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground text-center mt-2">
-                                {project.milestone1Complete && project.milestone2Complete && project.milestone3Complete && project.milestone4Complete 
+                                {project.milestone1Complete && project.milestone2Complete && project.milestone3Complete && project.milestone4Complete
                                   ? 'All milestones complete! Waiting for client approval.'
                                   : 'Mark milestones complete after delivering the work'}
                               </p>
@@ -560,7 +559,7 @@ export default function FreelancerDashboard() {
               Provide details about your completed work to help the client review and approve
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="completion-description">

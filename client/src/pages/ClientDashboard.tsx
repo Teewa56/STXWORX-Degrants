@@ -84,16 +84,16 @@ export default function ClientDashboard() {
     mutationFn: async (data: CreateProjectForm) => {
       // Get correct decimal multiplier for token type
       const decimals = getTokenDecimals(data.tokenType);
-      
+
       // Round to prevent floating point errors
       const roundedAmount = Math.round(data.amount * decimals) / decimals;
-      
+
       // Calculate milestone amounts as integers (in micro-units)
       const totalMicroUnits = Math.round(roundedAmount * decimals);
       const milestoneAmount = Math.floor(totalMicroUnits / 4);
       const remainder = totalMicroUnits - (milestoneAmount * 4);
       const lastMilestoneAmount = milestoneAmount + remainder;      // Step 1: Create project in database with milestone descriptions
-      const projectResponse = await apiRequest('POST', '/api/project/new', {
+      const response = await apiRequest('POST', '/api/project/new', {
         clientAddress: data.clientAddress,
         freelancerAddress: data.freelancerAddress,
         totalAmount: totalMicroUnits,
@@ -114,9 +114,10 @@ export default function ClientDashboard() {
         milestone4Description: data.milestone4Description,
         milestone4Attachment: data.milestone4Attachment,
       });
-      
-      console.log('✅ Step 1 complete: Project saved to database', projectResponse);
-      
+
+      const projectResult = await response.json();
+      console.log('✅ Step 1 complete: Project saved to database', projectResult);
+
       // Show toast that wallet approval is needed
       toast({
         title: 'Approve Transaction',
@@ -128,22 +129,22 @@ export default function ClientDashboard() {
         try {
           console.log('✅ Database save successful. Now creating on blockchain...');
           const { createEscrowOnChain, getProjectCount } = await import('@/lib/stacks');
-          
+
           // Get current project count before creating
           const projectCountBefore = await getProjectCount();
           console.log('📊 Project count before creation:', projectCountBefore);
           console.log('📊 Project count type:', typeof projectCountBefore);
           console.log('� Project count is safe integer:', Number.isSafeInteger(projectCountBefore));
-          
+
           // Validate project count is reasonable
           if (!Number.isSafeInteger(projectCountBefore) || projectCountBefore < 0 || projectCountBefore > 100000) {
             reject(new Error(`Invalid project count from blockchain: ${projectCountBefore}`));
             return;
           }
-          
+
           console.log('�🔐 Opening wallet for transaction approval...');
           console.log('⚠️ IMPORTANT: You must APPROVE the transaction in your wallet!');
-          
+
           createEscrowOnChain(
             data.freelancerAddress,
             data.amount,
@@ -152,29 +153,29 @@ export default function ClientDashboard() {
               try {
                 console.log('✅ Blockchain transaction successful!');
                 console.log('Project created, all funds locked in treasury:', createTxData);
-                
+
                 // The new project ID will be projectCountBefore + 1
                 const onChainProjectId = projectCountBefore + 1;
                 console.log('On-chain project ID:', onChainProjectId);
                 console.log('On-chain project ID is safe integer:', Number.isSafeInteger(onChainProjectId));
-                
+
                 // Step 3: Update project with on-chain details and mark all milestones as funded
-                await apiRequest('PATCH', `/api/projects/${projectResponse.id}/on-chain`, {
+                await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/on-chain`, {
                   onChainId: onChainProjectId,
                   txId: createTxData.txId
                 });
-                
+
                 // Mark all milestones as funded since money is in contract
                 for (let i = 1; i <= 4; i++) {
-                  await apiRequest('PATCH', `/api/projects/${projectResponse.id}/milestone/${i}/fund`, {});
+                  await apiRequest('PATCH', `/api/projects/${projectResult.project.id}/milestone/${i}/fund`, {});
                 }
-                
+
                 toast({
                   title: 'Project Created & Funded!',
                   description: `${data.amount} ${data.tokenType} locked in escrow. Freelancer can now start work.`,
                 });
-                
-                resolve({ ...projectResponse, onChainId: onChainProjectId, txId: createTxData.txId });
+
+                resolve({ ...projectResult.project, onChainId: onChainProjectId, txId: createTxData.txId });
               } catch (err: any) {
                 console.error('Error updating project with on-chain data:', err);
                 reject(err);
@@ -227,16 +228,16 @@ export default function ClientDashboard() {
   });
 
   const releaseEscrowMutation = useMutation({
-    mutationFn: async ({ 
-      id, 
-      onChainId, 
-      milestoneNum, 
-      freelancerAddress, 
+    mutationFn: async ({
+      id,
+      onChainId,
+      milestoneNum,
+      freelancerAddress,
       milestoneAmount,
-      tokenType 
-    }: { 
-      id: string; 
-      onChainId: number | null; 
+      tokenType
+    }: {
+      id: string;
+      onChainId: number | null;
       milestoneNum: number;
       freelancerAddress?: string;
       milestoneAmount?: number;
@@ -247,13 +248,13 @@ export default function ClientDashboard() {
           reject(new Error('No on-chain ID found for this project'));
           return;
         }
-        
+
         // Validate on-chain ID is a reasonable value (should be small sequential number)
         if (!Number.isSafeInteger(onChainId) || onChainId < 0 || onChainId > 100000) {
           reject(new Error(`Invalid on-chain ID: ${onChainId}. This project may have corrupted data. Please create a new project.`));
           return;
         }
-        
+
         import('@/lib/stacks').then(({ releaseEscrowOnChain }) => {
           releaseEscrowOnChain(
             onChainId,
@@ -261,9 +262,9 @@ export default function ClientDashboard() {
             tokenType, // Use the passed token type
             async (txData) => {
               try {
-                // Mark milestone as released in backend
-                const result = await apiRequest('PATCH', `/api/projects/${id}/milestone/${milestoneNum}/release`, {});
-                resolve({ ...result, txId: txData.txId });
+                apiRequest('PATCH', `/api/projects/${id}/milestone/${milestoneNum}/release`, {}).then(res => res.json()).then(result => {
+                  resolve({ ...result.updated, txId: txData.txId });
+                }).catch(reject);
               } catch (err) {
                 reject(err);
               }
@@ -302,7 +303,7 @@ export default function ClientDashboard() {
       });
       return;
     }
-    
+
     // Validate amount is divisible by 4 (for 4 milestones)
     const milestoneAmount = data.amount / 4;
     if (!Number.isInteger(milestoneAmount * 1_000_000)) { // Check in microstacks
@@ -313,7 +314,7 @@ export default function ClientDashboard() {
       });
       return;
     }
-    
+
     createEscrowMutation.mutate({
       ...data,
       clientAddress: walletAddress,
@@ -321,7 +322,7 @@ export default function ClientDashboard() {
   };
 
   const myEscrows = projects?.filter(e => e.clientAddress === walletAddress) || [];
-  
+
   // Calculate totals per token type (only count active/pending projects)
   const totalLockedSTX = microStacksToStx(
     myEscrows
@@ -479,7 +480,7 @@ export default function ClientDashboard() {
                               </FormItem>
                             )}
                           />
-                          
+
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
                               control={form.control}
@@ -535,7 +536,7 @@ export default function ClientDashboard() {
                               )}
                             />
                           </div>
-                          
+
                           <FormField
                             control={form.control}
                             name="description"
@@ -561,12 +562,12 @@ export default function ClientDashboard() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-base">Category</FormLabel>
-                                <Select 
+                                <Select
                                   onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedCategory(value);
                                     form.setValue('subcategory', '');
-                                  }} 
+                                  }}
                                   value={field.value || ''}
                                 >
                                   <FormControl>
@@ -629,7 +630,7 @@ export default function ClientDashboard() {
                             <p className="text-xs text-muted-foreground">
                               Define what needs to be delivered for each milestone
                             </p>
-                            
+
                             <FormField
                               control={form.control}
                               name="milestone1Description"
@@ -816,7 +817,7 @@ export default function ClientDashboard() {
                       {myEscrows.length} total
                     </Badge>
                   </div>
-                  
+
                   {isLoading ? (
                     <Card>
                       <CardContent className="py-12 text-center">
@@ -842,8 +843,8 @@ export default function ClientDashboard() {
                   ) : (
                     <div className="space-y-4">
                       {myEscrows.map((project) => (
-                        <Card 
-                          key={project.id} 
+                        <Card
+                          key={project.id}
                           className="group hover:border-primary/40 transition-all hover:shadow-lg hover:shadow-primary/5"
                           data-testid={`card-project-${project.id}`}
                         >
@@ -854,8 +855,8 @@ export default function ClientDashboard() {
                                   <CardTitle className="text-2xl font-bold">
                                     {microStacksToStx(project.totalAmount, project.tokenType).toFixed(2)} {project.tokenType}
                                   </CardTitle>
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className={`text-xs font-bold ${project.tokenType === 'STX' ? 'border-primary text-primary' : 'border-orange-500 text-orange-500'}`}
                                     data-testid={`badge-token-${project.id}`}
                                   >
@@ -885,7 +886,7 @@ export default function ClientDashboard() {
                               </Badge>
                             </div>
                           </CardHeader>
-                          
+
                           {project.description && (
                             <CardContent className="pb-3">
                               <div className="bg-muted/50 rounded-lg p-3">
@@ -893,7 +894,7 @@ export default function ClientDashboard() {
                               </div>
                             </CardContent>
                           )}
-                          
+
                           {project.status !== 'COMPLETED' && (
                             <CardContent className="pt-0">
                               <div className="space-y-3">
@@ -928,7 +929,7 @@ export default function ClientDashboard() {
                                     const released = project[`milestone${num}Released`];
                                     const completionAttachment = project[`milestone${num}CompletionAttachment`];
                                     const completionDescription = project[`milestone${num}CompletionDescription`];
-                                    
+
                                     // Debug logging
                                     if (complete) {
                                       console.log(`🔍 Milestone ${num} completion data:`, {
@@ -939,7 +940,7 @@ export default function ClientDashboard() {
                                         hasAttachment: !!completionAttachment
                                       });
                                     }
-                                    
+
                                     // Show milestone if it has description OR if it's been completed by freelancer
                                     if (description || complete) {
                                       return (
@@ -956,9 +957,9 @@ export default function ClientDashboard() {
                                           {attachment && (
                                             <div className="mt-2 flex items-center gap-1 text-xs">
                                               <FileText className="h-3 w-3 text-primary" />
-                                              <a 
-                                                href={attachment} 
-                                                target="_blank" 
+                                              <a
+                                                href={attachment}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-primary hover:underline"
                                               >
@@ -975,9 +976,9 @@ export default function ClientDashboard() {
                                               {completionAttachment && (
                                                 <div className="flex items-center gap-1 text-xs">
                                                   <FileText className="h-3 w-3 text-green-600" />
-                                                  <a 
-                                                    href={completionAttachment} 
-                                                    target="_blank" 
+                                                  <a
+                                                    href={completionAttachment}
+                                                    target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-green-600 hover:underline font-semibold"
                                                   >
@@ -1005,13 +1006,13 @@ export default function ClientDashboard() {
                                       const complete = project[`milestone${milestoneNum}Complete`];
                                       const released = project[`milestone${milestoneNum}Released`];
                                       const canRelease = funded && complete && !released;
-                                      
+
                                       return (
                                         <Button
                                           key={milestoneNum}
                                           size="sm"
-                                          onClick={() => releaseEscrowMutation.mutate({ 
-                                            id: project.id, 
+                                          onClick={() => releaseEscrowMutation.mutate({
+                                            id: project.id,
                                             onChainId: project.onChainId,
                                             milestoneNum,
                                             freelancerAddress: project.freelancerAddress,
