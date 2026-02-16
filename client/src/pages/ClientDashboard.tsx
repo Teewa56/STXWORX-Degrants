@@ -93,7 +93,7 @@ export default function ClientDashboard() {
       const milestoneAmount = Math.floor(totalMicroUnits / 4);
       const remainder = totalMicroUnits - (milestoneAmount * 4);
       const lastMilestoneAmount = milestoneAmount + remainder;      // Step 1: Create project in database with milestone descriptions
-      const response = await apiRequest('POST', '/api/project/new', {
+      const response = await apiRequest('POST', '/api/projects/new', {
         clientAddress: data.clientAddress,
         freelancerAddress: data.freelancerAddress,
         totalAmount: totalMicroUnits,

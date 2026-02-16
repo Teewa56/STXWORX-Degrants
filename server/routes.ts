@@ -7,6 +7,7 @@ import chatRouter from "./routes/chat";
 import multiSigRouter from "./routes/multi-sig";
 import nftRouter from "./routes/nft-minting";
 import xRouter from "./routes/x-integration";
+import projectsRouter from "./routes/projects";
 import { authenticateToken } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -83,6 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/multi-sig", multiSigRouter);
   app.use("/api/nft", nftRouter);
   app.use("/api/x", xRouter);
+  app.use("/api/projects", projectsRouter);
 
   // User Profile Routes
   app.get("/api/users/profile", authenticateToken, async (req: any, res) => {

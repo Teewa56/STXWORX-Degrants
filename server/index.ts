@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { registerProjectRoutes } from "./project-routes";
+// Remove project-routes import
 
 const app = express();
 app.use(express.json());
@@ -52,7 +52,7 @@ app.use((req, res, next) => {
   const { initChat } = await import('./routes/chat');
   initChat(server);
 
-  registerProjectRoutes(app); // Register milestone-based project routes
+  // app.use("/api/projects", registerProjectRoutes(app)); // Now handled in routes.ts
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

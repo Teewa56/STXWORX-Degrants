@@ -3,7 +3,8 @@ import { storage } from "./storage";
 import { insertProjectSchema, type Project, type InsertProject } from "@shared/schema";
 
 export function registerProjectRoutes(app: Express) {
-  
+  console.log('🚀 Registering project routes...');
+
   // Get all projects
   app.get("/api/projects", async (req, res) => {
     try {
@@ -29,9 +30,10 @@ export function registerProjectRoutes(app: Express) {
 
   // Create new project
   app.post("/api/project/new", async (req, res) => {
+    console.log('📩 POST /api/project/new received:', req.body);
     try {
       const validatedData = insertProjectSchema.parse(req.body);
-      
+
       const projectData: InsertProject = {
         ...validatedData,
         milestone1Title: validatedData.milestone1Title || "Milestone 1",
@@ -39,15 +41,15 @@ export function registerProjectRoutes(app: Express) {
         milestone3Title: validatedData.milestone3Title || "Milestone 3",
         milestone4Title: validatedData.milestone4Title || "Milestone 4",
       };
-      
+
       const project = await storage.createProject(projectData);
-      res.status(201).json({message: "Project created successfully", project});
+      res.status(201).json({ message: "Project created successfully", project });
     } catch (error: any) {
       console.log(error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
-      res.status(500).json({message: "Failed to create project", error});
+      res.status(500).json({ message: "Failed to create project", error });
     }
   });
 
@@ -60,14 +62,14 @@ export function registerProjectRoutes(app: Express) {
         txId,
         status: "ACTIVE"
       });
-      
+
       if (!project) {
-        return res.status(404).json({message: "Project not found"});
+        return res.status(404).json({ message: "Project not found" });
       }
-      
-      res.json({message: "Project updated successfully", project});
+
+      res.json({ message: "Project updated successfully", project });
     } catch (error) {
-      res.status(500).json({message: "Failed to update project", error});
+      res.status(500).json({ message: "Failed to update project", error });
     }
   });
 
@@ -78,9 +80,9 @@ export function registerProjectRoutes(app: Express) {
       if (milestoneNum < 1 || milestoneNum > 4) {
         return res.status(400).json({ error: "Invalid milestone number" });
       }
-      
+
       const { completionDescription, completionAttachment } = req.body;
-      
+
       console.log('🔍 Milestone completion request:', {
         projectId: req.params.id,
         milestoneNum,
@@ -88,42 +90,42 @@ export function registerProjectRoutes(app: Express) {
         completionAttachment,
         bodyKeys: Object.keys(req.body)
       });
-      
+
       const project = await storage.getProject(req.params.id);
       if (!project) {
-        return res.status(404).json({message: "Project not found"});
+        return res.status(404).json({ message: "Project not found" });
       }
-      
+
       const completeField = `milestone${milestoneNum}Complete` as keyof Project;
       const descriptionField = `milestone${milestoneNum}CompletionDescription` as keyof Project;
       const attachmentField = `milestone${milestoneNum}CompletionAttachment` as keyof Project;
-      
+
       const updates: Partial<Project> = {
         [completeField]: true
       };
-      
+
       if (completionDescription) {
         updates[descriptionField] = completionDescription;
       }
-      
+
       if (completionAttachment) {
         updates[attachmentField] = completionAttachment;
       }
-      
+
       console.log('💾 Updating project with:', updates);
-      
+
       const updated = await storage.updateProject(req.params.id, updates);
-      
+
       console.log('✅ Updated project milestone fields:', {
         [`milestone${milestoneNum}Complete`]: updated?.[completeField],
         [`milestone${milestoneNum}CompletionDescription`]: updated?.[descriptionField],
         [`milestone${milestoneNum}CompletionAttachment`]: updated?.[attachmentField]
       });
-      
-      res.json({message: "Milestone marked complete successfully", updated});
+
+      res.json({ message: "Milestone marked complete successfully", updated });
     } catch (error) {
       console.error('❌ Error marking milestone complete:', error);
-      res.status(500).json({message: "Failed to mark milestone complete", error});
+      res.status(500).json({ message: "Failed to mark milestone complete", error });
     }
   });
 
@@ -132,37 +134,37 @@ export function registerProjectRoutes(app: Express) {
     try {
       const milestoneNum = parseInt(req.params.num);
       if (milestoneNum < 1 || milestoneNum > 4) {
-        return res.status(400).json({message: "Invalid milestone number"});
+        return res.status(400).json({ message: "Invalid milestone number" });
       }
-      
+
       const project = await storage.getProject(req.params.id);
       if (!project) {
-        return res.status(404).json({message: "Project not found"});
+        return res.status(404).json({ message: "Project not found" });
       }
-      
+
       // Check if milestone is complete before releasing
       const completeField = `milestone${milestoneNum}Complete` as keyof Project;
       if (!project[completeField]) {
-        return res.status(400).json({message: "Milestone must be marked complete before release"});
+        return res.status(400).json({ message: "Milestone must be marked complete before release" });
       }
-      
+
       const releaseField = `milestone${milestoneNum}Released` as keyof Project;
       const updated = await storage.updateProject(req.params.id, {
         [releaseField]: true
       });
-      
+
       // Check if all milestones are released
-      if (updated && 
-          updated.milestone1Released && 
-          updated.milestone2Released && 
-          updated.milestone3Released && 
-          updated.milestone4Released) {
+      if (updated &&
+        updated.milestone1Released &&
+        updated.milestone2Released &&
+        updated.milestone3Released &&
+        updated.milestone4Released) {
         await storage.updateProject(req.params.id, { status: "COMPLETED" });
       }
-      
-      res.json({message: "Milestone released successfully", updated});
+
+      res.json({ message: "Milestone released successfully", updated });
     } catch (error) {
-      res.status(500).json({message: "Failed to release milestone", error});
+      res.status(500).json({ message: "Failed to release milestone", error });
     }
   });
 
@@ -171,22 +173,22 @@ export function registerProjectRoutes(app: Express) {
     try {
       const milestoneNum = parseInt(req.params.num);
       if (milestoneNum < 1 || milestoneNum > 4) {
-        return res.status(400).json({message: "Invalid milestone number"});
+        return res.status(400).json({ message: "Invalid milestone number" });
       }
-      
+
       const project = await storage.getProject(req.params.id);
       if (!project) {
-        return res.status(404).json({message: "Project not found"});  
+        return res.status(404).json({ message: "Project not found" });
       }
-      
+
       const field = `milestone${milestoneNum}Funded` as keyof Project;
       const updated = await storage.updateProject(req.params.id, {
         [field]: true
       });
-      
-      res.json({message: "Milestone funded successfully", updated});
+
+      res.json({ message: "Milestone funded successfully", updated });
     } catch (error) {
-      res.status(500).json({message: "Failed to fund milestone", error});
+      res.status(500).json({ message: "Failed to fund milestone", error });
     }
   });
 }
