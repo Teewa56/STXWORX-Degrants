@@ -1,5 +1,6 @@
-import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject, type XIntegration, type InsertXIntegration, type DaoProposal, type InsertDaoProposal, type DaoApproval, type InsertDaoApproval, type AdminAction, type InsertAdminAction } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { type User, type InsertUser, type Escrow, type InsertEscrow, type Category, type InsertCategory, type Project, type InsertProject, type XIntegration, type InsertXIntegration, type DaoProposal, type InsertDaoProposal, type DaoApproval, type InsertDaoApproval, type AdminAction, type InsertAdminAction, type ChatMessage, type InsertChatMessage } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -47,41 +48,37 @@ export interface IStorage {
 
   // Admin action methods
   createAdminAction(action: InsertAdminAction): Promise<AdminAction>;
+
+  // Chat methods
+  getChatMessages(projectId: string, limit: number, before?: string): Promise<ChatMessage[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  deleteChatMessage(messageId: string): Promise<void>;
+  getChatMessage(messageId: string): Promise<ChatMessage | undefined>;
 }
 
-// PostgreSQL Storage Implementation
-export class PostgresStorage implements IStorage {
-  private db: any;
-
-  constructor(db: any) {
-    this.db = db;
-  }
-
+export class NeonStorage implements IStorage {
   // User methods
   async getUser(id: string): Promise<User | undefined> {
     const { users } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(users).where(eq(users.id, id));
+    const result = await db.select().from(users).where(eq(users.id, id));
     return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const { users } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(users).where(eq(users.username, username));
+    const result = await db.select().from(users).where(eq(users.username, username));
     return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const { users } = await import("@shared/schema");
-    const result = await this.db.insert(users).values(insertUser).returning();
+    const result = await db.insert(users).values(insertUser).returning();
     return result[0];
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
     const { users } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const [result] = await this.db.update(users)
+    const [result] = await db.update(users)
       .set(updates)
       .where(eq(users.id, id))
       .returning();
@@ -91,52 +88,46 @@ export class PostgresStorage implements IStorage {
   // Category methods
   async getAllCategories(): Promise<Category[]> {
     const { categories } = await import("@shared/schema");
-    return await this.db.select().from(categories);
+    return await db.select().from(categories);
   }
 
   async getCategory(id: string): Promise<Category | undefined> {
     const { categories } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(categories).where(eq(categories.id, id));
+    const result = await db.select().from(categories).where(eq(categories.id, id));
     return result[0];
   }
 
   async getCategoryByName(name: string): Promise<Category | undefined> {
     const { categories } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(categories).where(eq(categories.name, name));
+    const result = await db.select().from(categories).where(eq(categories.name, name));
     return result[0];
   }
 
   // Escrow methods
   async getAllEscrows(): Promise<Escrow[]> {
     const { escrows } = await import("@shared/schema");
-    return await this.db.select().from(escrows);
+    return await db.select().from(escrows);
   }
 
   async getEscrow(id: string): Promise<Escrow | undefined> {
     const { escrows } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(escrows).where(eq(escrows.id, id));
+    const result = await db.select().from(escrows).where(eq(escrows.id, id));
     return result[0];
   }
 
   async getEscrowsByClient(clientAddress: string): Promise<Escrow[]> {
     const { escrows } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(escrows).where(eq(escrows.clientAddress, clientAddress));
+    return await db.select().from(escrows).where(eq(escrows.clientAddress, clientAddress));
   }
 
   async getEscrowsByFreelancer(freelancerAddress: string): Promise<Escrow[]> {
     const { escrows } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(escrows).where(eq(escrows.freelancerAddress, freelancerAddress));
+    return await db.select().from(escrows).where(eq(escrows.freelancerAddress, freelancerAddress));
   }
 
   async getEscrowsByCategory(category: string): Promise<Escrow[]> {
     const { escrows } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(escrows).where(eq(escrows.category, category));
+    return await db.select().from(escrows).where(eq(escrows.category, category));
   }
 
   async createEscrow(insertEscrow: InsertEscrow): Promise<Escrow> {
@@ -149,14 +140,13 @@ export class PostgresStorage implements IStorage {
       completed: false,
       released: false,
     };
-    const result = await this.db.insert(escrows).values(escrowData).returning();
+    const result = await db.insert(escrows).values(escrowData).returning();
     return result[0];
   }
 
   async updateEscrow(id: string, updates: Partial<Escrow>): Promise<Escrow | undefined> {
     const { escrows } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.update(escrows)
+    const result = await db.update(escrows)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(escrows.id, id))
       .returning();
@@ -178,26 +168,23 @@ export class PostgresStorage implements IStorage {
   // Project methods
   async getAllProjects(): Promise<Project[]> {
     const { projects } = await import("@shared/schema");
-    return await this.db.select().from(projects);
+    return await db.select().from(projects);
   }
 
   async getProject(id: string): Promise<Project | undefined> {
     const { projects } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.select().from(projects).where(eq(projects.id, id));
+    const result = await db.select().from(projects).where(eq(projects.id, id));
     return result[0];
   }
 
   async getProjectsByClient(clientAddress: string): Promise<Project[]> {
     const { projects } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(projects).where(eq(projects.clientAddress, clientAddress));
+    return await db.select().from(projects).where(eq(projects.clientAddress, clientAddress));
   }
 
   async getProjectsByFreelancer(freelancerAddress: string): Promise<Project[]> {
     const { projects } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(projects).where(eq(projects.freelancerAddress, freelancerAddress));
+    return await db.select().from(projects).where(eq(projects.freelancerAddress, freelancerAddress));
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
@@ -223,14 +210,13 @@ export class PostgresStorage implements IStorage {
       milestone4Complete: false,
       milestone4Released: false,
     };
-    const result = await this.db.insert(projects).values(projectData).returning();
+    const result = await db.insert(projects).values(projectData).returning();
     return result[0];
   }
 
   async updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined> {
     const { projects } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const result = await this.db.update(projects)
+    const result = await db.update(projects)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(projects.id, id))
       .returning();
@@ -240,16 +226,14 @@ export class PostgresStorage implements IStorage {
   // X Integration methods
   async getXIntegration(userId: string): Promise<XIntegration | undefined> {
     const { xIntegrations } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
     if (!userId) return undefined;
-    const result = await this.db.select().from(xIntegrations).where(eq(xIntegrations.userId, userId));
+    const result = await db.select().from(xIntegrations).where(eq(xIntegrations.userId, userId));
     return result[0];
   }
 
   async updateXIntegration(userId: string, updates: Partial<XIntegration>): Promise<XIntegration | undefined> {
     const { xIntegrations } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const [result] = await this.db.update(xIntegrations)
+    const [result] = await db.update(xIntegrations)
       .set({ ...updates, lastSync: new Date() })
       .where(eq(xIntegrations.userId, userId))
       .returning();
@@ -258,7 +242,6 @@ export class PostgresStorage implements IStorage {
 
   async upsertXIntegration(insertData: InsertXIntegration): Promise<XIntegration> {
     const { xIntegrations } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
 
     if (!insertData.userId) throw new Error("userId is required for X integration");
 
@@ -266,13 +249,13 @@ export class PostgresStorage implements IStorage {
     const existing = await this.getXIntegration(insertData.userId);
 
     if (existing) {
-      const result = await this.db.update(xIntegrations)
+      const result = await db.update(xIntegrations)
         .set({ ...insertData, lastSync: new Date() })
         .where(eq(xIntegrations.userId, insertData.userId))
         .returning();
       return result[0];
     } else {
-      const result = await this.db.insert(xIntegrations).values({
+      const result = await db.insert(xIntegrations).values({
         ...insertData,
         verified: insertData.verified ?? false,
         followerCount: insertData.followerCount ?? 0,
@@ -284,571 +267,88 @@ export class PostgresStorage implements IStorage {
 
   async deleteXIntegration(userId: string): Promise<void> {
     const { xIntegrations } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    await this.db.delete(xIntegrations).where(eq(xIntegrations.userId, userId));
+    await db.delete(xIntegrations).where(eq(xIntegrations.userId, userId));
   }
 
   // DAO Multi-sig methods
   async getDaoProposals(status?: string): Promise<DaoProposal[]> {
     const { daoProposals } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
     if (status) {
-      return await this.db.select().from(daoProposals).where(eq(daoProposals.status, status));
+      return await db.select().from(daoProposals).where(eq(daoProposals.status, status));
     }
-    return await this.db.select().from(daoProposals);
+    return await db.select().from(daoProposals);
   }
 
   async getDaoProposal(id: string): Promise<{ proposal: DaoProposal; approvals: DaoApproval[] } | undefined> {
     const { daoProposals, daoApprovals } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const [proposal] = await this.db.select().from(daoProposals).where(eq(daoProposals.id, id));
+    const [proposal] = await db.select().from(daoProposals).where(eq(daoProposals.id, id));
     if (!proposal) return undefined;
-    const approvals = await this.db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, id));
+    const approvals = await db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, id));
     return { proposal, approvals };
   }
 
   async createDaoProposal(proposal: InsertDaoProposal): Promise<DaoProposal> {
     const { daoProposals } = await import("@shared/schema");
-    const [result] = await this.db.insert(daoProposals).values(proposal).returning();
+    const [result] = await db.insert(daoProposals).values(proposal).returning();
     return result;
   }
 
   async updateDaoProposal(id: string, updates: Partial<DaoProposal>): Promise<DaoProposal | undefined> {
     const { daoProposals } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    const [result] = await this.db.update(daoProposals).set(updates).where(eq(daoProposals.id, id)).returning();
+    const [result] = await db.update(daoProposals).set(updates).where(eq(daoProposals.id, id)).returning();
     return result;
   }
 
   async addDaoApproval(approval: InsertDaoApproval): Promise<DaoApproval> {
     const { daoApprovals } = await import("@shared/schema");
-    const [result] = await this.db.insert(daoApprovals).values(approval).returning();
+    const [result] = await db.insert(daoApprovals).values(approval).returning();
     return result;
   }
 
   async getDaoApprovals(proposalId: string): Promise<DaoApproval[]> {
     const { daoApprovals } = await import("@shared/schema");
-    const { eq } = await import("drizzle-orm");
-    return await this.db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, proposalId));
+    return await db.select().from(daoApprovals).where(eq(daoApprovals.proposalId, proposalId));
   }
 
   async createAdminAction(action: InsertAdminAction): Promise<AdminAction> {
     const { adminActions } = await import("@shared/schema");
-    const [result] = await this.db.insert(adminActions).values(action).returning();
+    const [result] = await db.insert(adminActions).values(action).returning();
+    return result;
+  }
+
+  // Chat methods
+  async getChatMessages(projectId: string, limit: number, before?: string): Promise<ChatMessage[]> {
+    const { chatMessages } = await import("@shared/schema");
+
+    let conditions = eq(chatMessages.projectId, projectId);
+
+    if (before) {
+      conditions = and(conditions, sql`${chatMessages.timestamp} < ${before}`) as any;
+    }
+
+    return await db.select()
+      .from(chatMessages)
+      .where(conditions)
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(limit);
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const { chatMessages } = await import("@shared/schema");
+    const [result] = await db.insert(chatMessages).values(message).returning();
+    return result;
+  }
+
+  async deleteChatMessage(messageId: string): Promise<void> {
+    const { chatMessages } = await import("@shared/schema");
+    await db.delete(chatMessages).where(eq(chatMessages.id, messageId));
+  }
+
+  async getChatMessage(messageId: string): Promise<ChatMessage | undefined> {
+    const { chatMessages } = await import("@shared/schema");
+    const [result] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId));
     return result;
   }
 }
 
-// In-Memory Storage Implementation (for development/fallback)
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private categories: Map<string, Category>;
-  private escrows: Map<string, Escrow>;
-  private projects: Map<string, Project>;
-  private xIntegrations: Map<string, XIntegration>;
-  private daoProposals: Map<string, DaoProposal>;
-  private daoApprovals: Map<string, DaoApproval>;
-  private adminActions: Map<string, AdminAction>;
-
-  constructor() {
-    this.users = new Map();
-    this.categories = new Map();
-    this.escrows = new Map();
-    this.projects = new Map();
-    this.xIntegrations = new Map();
-    this.daoProposals = new Map();
-    this.daoApprovals = new Map();
-    this.adminActions = new Map();
-
-    this.seedCategories();
-  }
-
-  private seedCategories() {
-    const categoryData: InsertCategory[] = [
-      {
-        name: "Creative & Design",
-        icon: "Palette",
-        subcategories: [
-          "UI/UX Design",
-          "Logo & Branding",
-          "Animation & Motion Graphics",
-          "VFX / CGI",
-          "3D Modeling & Rendering",
-          "NFT Art & Collectibles",
-          "Product Mockups",
-        ],
-      },
-      {
-        name: "Development & Tech",
-        icon: "Code",
-        subcategories: [
-          "Smart Contract Development (Clarity, Solidity, Rust)",
-          "Web2 → Web3 Integration",
-          "dApp Development",
-          "Game Development (Unity / WebGL / React)",
-          "AI & Machine Learning",
-          "API Integration",
-          "Automation & Robotics",
-        ],
-      },
-      {
-        name: "Media & Content",
-        icon: "Film",
-        subcategories: [
-          "Video Production & Editing",
-          "Music Production (AI-assisted / traditional)",
-          "Voiceovers & Sound Design",
-          "Podcast Production",
-          "Scriptwriting & Storyboarding",
-          "AR/VR Media",
-        ],
-      },
-      {
-        name: "Marketing & Community",
-        icon: "TrendingUp",
-        subcategories: [
-          "Social Media Campaigns",
-          "Influencer Collaborations",
-          "Brand Strategy",
-          "Web3 PR & Content Writing",
-          "Discord & Telegram Community Setup",
-          "Growth Hacking",
-        ],
-      },
-      {
-        name: "Business & Consulting",
-        icon: "Briefcase",
-        subcategories: [
-          "Tokenomics Design",
-          "Startup Mentoring",
-          "Financial Modeling (Web3 projects)",
-          "Legal / Compliance Advice (DAO structuring, etc.)",
-          "Pitch Decks & Grant Proposals",
-        ],
-      },
-      {
-        name: "AI & Automation",
-        icon: "Bot",
-        subcategories: [
-          "AI Prompt Engineering",
-          "AI Art / Music Generation",
-          "Chatbot & Agent Creation",
-          "Workflow Automation with APIs",
-          "Data Science / Predictive Analytics",
-        ],
-      },
-      {
-        name: "Blockchain Services",
-        icon: "Link",
-        subcategories: [
-          "NFT Minting & Marketplace Integration",
-          "DAO Setup & Management",
-          "Cross-chain Bridge Development",
-          "STX Smart Contracts & Wallet Integrations",
-          "Security Audits",
-        ],
-      },
-    ];
-
-    categoryData.forEach((cat) => {
-      const id = randomUUID();
-      const category: Category = { ...cat, id } as Category;
-      this.categories.set(id, category);
-    });
-  }
-
-  // User methods
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = {
-      ...insertUser,
-      id,
-      role: insertUser.role || "user",
-      mfaEnabled: insertUser.mfaEnabled || false,
-      mfaSecret: insertUser.mfaSecret || null,
-      stxAddress: insertUser.stxAddress || null,
-      salt: insertUser.salt || "",
-      displayName: insertUser.displayName || null,
-      email: insertUser.email || null,
-      phone: insertUser.phone || null,
-      bio: insertUser.bio || null,
-      location: insertUser.location || null,
-      website: insertUser.website || null,
-      avatar: insertUser.avatar || null,
-      coverImage: insertUser.coverImage || null,
-      title: insertUser.title || null,
-      company: insertUser.company || null,
-      experience: insertUser.experience || null,
-      skills: (insertUser.skills as any) || [],
-      languages: (insertUser.languages as any) || [],
-      education: (insertUser.education as any) || [],
-      completedProjects: insertUser.completedProjects || 0,
-      totalEarnings: insertUser.totalEarnings || 0,
-      reputation: insertUser.reputation || 0,
-      rating: insertUser.rating || 0,
-      reviews: insertUser.reviews || 0,
-      responseRate: insertUser.responseRate || 0,
-      responseTime: insertUser.responseTime || null,
-      socialLinks: (insertUser.socialLinks as any) || {},
-      portfolioItems: (insertUser.portfolioItems as any) || [],
-      preferences: (insertUser.preferences as any) || {
-        emailNotifications: true,
-        publicProfile: true,
-        showEarnings: false,
-        allowMessages: true
-      },
-    };
-    this.users.set(id, user);
-    return user;
-  }
-
-  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    const updated = { ...user, ...updates };
-    this.users.set(id, updated);
-    return updated;
-  }
-
-  // Category methods
-  async getAllCategories(): Promise<Category[]> {
-    return Array.from(this.categories.values());
-  }
-
-  async getCategory(id: string): Promise<Category | undefined> {
-    return this.categories.get(id);
-  }
-
-  async getCategoryByName(name: string): Promise<Category | undefined> {
-    return Array.from(this.categories.values()).find(
-      (category) => category.name === name,
-    );
-  }
-
-  // Escrow methods
-  async getAllEscrows(): Promise<Escrow[]> {
-    return Array.from(this.escrows.values());
-  }
-
-  async getEscrow(id: string): Promise<Escrow | undefined> {
-    return this.escrows.get(id);
-  }
-
-  async getEscrowsByClient(clientAddress: string): Promise<Escrow[]> {
-    return Array.from(this.escrows.values()).filter(
-      (escrow) => escrow.clientAddress === clientAddress,
-    );
-  }
-
-  async getEscrowsByFreelancer(freelancerAddress: string): Promise<Escrow[]> {
-    return Array.from(this.escrows.values()).filter(
-      (escrow) => escrow.freelancerAddress === freelancerAddress,
-    );
-  }
-
-  async getEscrowsByCategory(category: string): Promise<Escrow[]> {
-    return Array.from(this.escrows.values()).filter(
-      (escrow) => escrow.category === category,
-    );
-  }
-
-  async createEscrow(insertEscrow: InsertEscrow): Promise<Escrow> {
-    const id = randomUUID();
-    const escrow: Escrow = {
-      id,
-      clientAddress: insertEscrow.clientAddress || "",
-      freelancerAddress: insertEscrow.freelancerAddress,
-      amount: insertEscrow.amount,
-      tokenType: insertEscrow.tokenType || "STX",
-      onChainId: null,
-      txId: null,
-      status: "created",
-      funded: false,
-      completed: false,
-      released: false,
-      description: insertEscrow.description || null,
-      category: insertEscrow.category || null,
-      subcategory: insertEscrow.subcategory || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.escrows.set(id, escrow);
-    return escrow;
-  }
-
-  async updateEscrow(id: string, updates: Partial<Escrow>): Promise<Escrow | undefined> {
-    const escrow = this.escrows.get(id);
-    if (!escrow) {
-      return undefined;
-    }
-
-    const updated: Escrow = { ...escrow, ...updates };
-    this.escrows.set(id, updated);
-    return updated;
-  }
-
-  async updateEscrowStatus(id: string, status: string): Promise<Escrow | undefined> {
-    // Legacy method - kept for compatibility
-    const escrow = this.escrows.get(id);
-    if (!escrow) {
-      return undefined;
-    }
-
-    // Map old status to new boolean fields
-    const updates: Partial<Escrow> = {};
-    if (status === 'funded') {
-      updates.funded = true;
-    } else if (status === 'completed') {
-      updates.completed = true;
-    } else if (status === 'released') {
-      updates.released = true;
-    }
-
-    return this.updateEscrow(id, updates);
-  }
-
-  // Project methods
-  async getAllProjects(): Promise<Project[]> {
-    return Array.from(this.projects.values());
-  }
-
-  async getProject(id: string): Promise<Project | undefined> {
-    return this.projects.get(id);
-  }
-
-  async getProjectsByClient(clientAddress: string): Promise<Project[]> {
-    return Array.from(this.projects.values()).filter(
-      (project) => project.clientAddress === clientAddress,
-    );
-  }
-
-  async getProjectsByFreelancer(freelancerAddress: string): Promise<Project[]> {
-    return Array.from(this.projects.values()).filter(
-      (project) => project.freelancerAddress === freelancerAddress,
-    );
-  }
-
-  async createProject(insertProject: InsertProject): Promise<Project> {
-    const id = randomUUID();
-    const project: Project = {
-      id,
-      onChainId: null,
-      txId: null,
-      clientAddress: insertProject.clientAddress || "",
-      freelancerAddress: insertProject.freelancerAddress,
-      totalAmount: insertProject.totalAmount,
-      tokenType: insertProject.tokenType || "STX",
-      status: "PENDING",
-      description: insertProject.description || null,
-      category: insertProject.category || null,
-      subcategory: insertProject.subcategory || null,
-
-      // Milestone 1
-      milestone1Amount: insertProject.milestone1Amount,
-      milestone1Title: insertProject.milestone1Title || "Milestone 1",
-      milestone1Description: insertProject.milestone1Description || null,
-      milestone1Attachment: insertProject.milestone1Attachment || null,
-      milestone1Funded: false,
-      milestone1Complete: false,
-      milestone1Released: false,
-      milestone1CompletionAttachment: null,
-      milestone1CompletionDescription: null,
-
-      // Milestone 2
-      milestone2Amount: insertProject.milestone2Amount,
-      milestone2Title: insertProject.milestone2Title || "Milestone 2",
-      milestone2Description: insertProject.milestone2Description || null,
-      milestone2Attachment: insertProject.milestone2Attachment || null,
-      milestone2Funded: false,
-      milestone2Complete: false,
-      milestone2Released: false,
-      milestone2CompletionAttachment: null,
-      milestone2CompletionDescription: null,
-
-      // Milestone 3
-      milestone3Amount: insertProject.milestone3Amount,
-      milestone3Title: insertProject.milestone3Title || "Milestone 3",
-      milestone3Description: insertProject.milestone3Description || null,
-      milestone3Attachment: insertProject.milestone3Attachment || null,
-      milestone3Funded: false,
-      milestone3Complete: false,
-      milestone3Released: false,
-      milestone3CompletionAttachment: null,
-      milestone3CompletionDescription: null,
-
-      // Milestone 4
-      milestone4Amount: insertProject.milestone4Amount,
-      milestone4Title: insertProject.milestone4Title || "Milestone 4",
-      milestone4Description: insertProject.milestone4Description || null,
-      milestone4Attachment: insertProject.milestone4Attachment || null,
-      milestone4Funded: false,
-      milestone4Complete: false,
-      milestone4Released: false,
-      milestone4CompletionAttachment: null,
-      milestone4CompletionDescription: null,
-
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    this.projects.set(id, project);
-    return project;
-  }
-
-  async updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined> {
-    const project = this.projects.get(id);
-    if (!project) {
-      return undefined;
-    }
-
-    const updated: Project = {
-      ...project,
-      ...updates,
-      updatedAt: new Date()
-    };
-    this.projects.set(id, updated);
-    return updated;
-  }
-
-  // X Integration methods
-  async getXIntegration(userId: string): Promise<XIntegration | undefined> {
-    return Array.from(this.xIntegrations.values()).find(x => x.userId === userId);
-  }
-
-  async updateXIntegration(userId: string, updates: Partial<XIntegration>): Promise<XIntegration | undefined> {
-    const existing = await this.getXIntegration(userId);
-    if (!existing) return undefined;
-
-    const updated: XIntegration = {
-      ...existing,
-      ...updates,
-      lastSync: new Date(),
-    };
-    this.xIntegrations.set(updated.id, updated);
-    return updated;
-  }
-
-  async upsertXIntegration(insertData: InsertXIntegration): Promise<XIntegration> {
-    if (!insertData.userId) throw new Error("userId is required for X integration");
-    const existing = await this.getXIntegration(insertData.userId);
-    const id = existing?.id || randomUUID();
-
-    const integration: XIntegration = {
-      ...insertData,
-      id,
-      userId: insertData.userId,
-      handle: insertData.handle,
-      verified: insertData.verified ?? existing?.verified ?? false,
-      followerCount: insertData.followerCount ?? existing?.followerCount ?? 0,
-      engagementScore: insertData.engagementScore ?? existing?.engagementScore ?? 0,
-      accessToken: insertData.accessToken || existing?.accessToken || null,
-      refreshToken: insertData.refreshToken || existing?.refreshToken || null,
-      expiresAt: insertData.expiresAt || existing?.expiresAt || null,
-      lastSync: new Date(),
-    };
-
-    this.xIntegrations.set(id, integration);
-    return integration;
-  }
-
-  async deleteXIntegration(userId: string): Promise<void> {
-    const existing = await this.getXIntegration(userId);
-    if (existing) {
-      this.xIntegrations.delete(existing.id);
-    }
-  }
-
-  // DAO Multi-sig methods
-  async getDaoProposals(status?: string): Promise<DaoProposal[]> {
-    const all = Array.from(this.daoProposals.values());
-    if (status) return all.filter(p => p.status === status);
-    return all;
-  }
-
-  async getDaoProposal(id: string): Promise<{ proposal: DaoProposal; approvals: DaoApproval[] } | undefined> {
-    const proposal = this.daoProposals.get(id);
-    if (!proposal) return undefined;
-    const approvals = Array.from(this.daoApprovals.values()).filter(a => a.proposalId === id);
-    return { proposal, approvals };
-  }
-
-  async createDaoProposal(proposal: InsertDaoProposal): Promise<DaoProposal> {
-    const id = randomUUID();
-    const result: DaoProposal = {
-      ...proposal,
-      id,
-      status: "pending",
-      createdAt: new Date(),
-      executionTxId: null,
-      executionResult: null,
-      functionArgs: proposal.functionArgs as string[],
-      onChainId: proposal.onChainId ?? null,
-    };
-    this.daoProposals.set(id, result);
-    return result;
-  }
-
-  async updateDaoProposal(id: string, updates: Partial<DaoProposal>): Promise<DaoProposal | undefined> {
-    const existing = this.daoProposals.get(id);
-    if (!existing) return undefined;
-    const updated = { ...existing, ...updates };
-    this.daoProposals.set(id, updated);
-    return updated;
-  }
-
-  async addDaoApproval(approval: InsertDaoApproval): Promise<DaoApproval> {
-    const id = randomUUID();
-    const result: DaoApproval = { ...approval, id, timestamp: new Date() };
-    this.daoApprovals.set(id, result);
-    return result;
-  }
-
-  async getDaoApprovals(proposalId: string): Promise<DaoApproval[]> {
-    return Array.from(this.daoApprovals.values()).filter(a => a.proposalId === proposalId);
-  }
-
-  async createAdminAction(action: InsertAdminAction): Promise<AdminAction> {
-    const id = randomUUID();
-    const result: AdminAction = {
-      ...action,
-      id,
-      timestamp: new Date(),
-      adminId: action.adminId ?? null,
-      ipAddress: action.ipAddress ?? null,
-    };
-    this.adminActions.set(id, result);
-    return result;
-  }
-}
-
-// Initialize storage based on environment
-let storage: IStorage = new MemStorage(); // Default to in-memory
-
-// Async initialization function
-async function initializeStorage() {
-  if (process.env.DATABASE_URL) {
-    // Use PostgreSQL if DATABASE_URL is provided
-    const { db } = await import("./db");
-    storage = new PostgresStorage(db);
-    console.log("✓ Using PostgreSQL storage");
-  } else {
-    // Already using in-memory storage
-    console.log("⚠ Using in-memory storage (data will be lost on restart)");
-  }
-}
-
-// Initialize storage
-initializeStorage();
-
-export { storage };
-
+export const storage = new NeonStorage();

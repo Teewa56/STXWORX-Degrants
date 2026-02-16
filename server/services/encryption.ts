@@ -18,10 +18,10 @@ export class ChatEncryptionService {
     try {
       const key = crypto.randomBytes(32); // 256-bit key
       const keyBase64 = key.toString('base64');
-      
+
       // Cache the key with expiration
       await CacheManager.set(`${this.CHAT_KEY_PREFIX}${projectId}`, keyBase64, 7 * 24 * 60 * 60); // 7 days
-      
+
       return keyBase64;
     } catch (error) {
       console.error('Error generating chat key:', error);
@@ -55,15 +55,15 @@ export class ChatEncryptionService {
       const salt = crypto.randomBytes(SALT_LENGTH);
       const iv = crypto.randomBytes(IV_LENGTH);
       const keyBuffer = Buffer.from(key, 'base64');
-      
-      const cipher = crypto.createCipher(ENCRYPTION_ALGORITHM, keyBuffer);
+
+      const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, keyBuffer, iv);
       cipher.setAAD(salt); // Additional authenticated data
-      
+
       let encrypted = cipher.update(message, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       const tag = cipher.getAuthTag();
-      
+
       return {
         encrypted,
         iv: iv.toString('hex'),
@@ -89,14 +89,14 @@ export class ChatEncryptionService {
       const ivBuffer = Buffer.from(iv, 'hex');
       const tagBuffer = Buffer.from(tag, 'hex');
       const saltBuffer = Buffer.from(salt, 'hex');
-      
-      const decipher = crypto.createDecipher(ENCRYPTION_ALGORITHM, keyBuffer);
+
+      const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, keyBuffer, ivBuffer);
       decipher.setAuthTag(tagBuffer);
       decipher.setAAD(saltBuffer);
-      
+
       let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     } catch (error) {
       console.error('Error decrypting message:', error);
@@ -125,20 +125,21 @@ export class ChatEncryptionService {
 
       // Encrypt message with chat key
       const chatEncryption = this.encryptMessage(message, chatKey);
-      
+
       // Encrypt the chat key with user's key
       const keyEncryption = this.encryptMessage(chatKey, userKey);
-      
+
       // Combine encrypted data
       const combinedData = JSON.stringify({
         message: chatEncryption,
         key: keyEncryption
       });
-      
+
       // Final encryption with master key
-      const masterKey = process.env.CHAT_ENCRYPTION_KEY || 'default-32-character-encryption-key';
+      const masterKey = process.env.CHAT_ENCRYPTION_KEY;
+      if (!masterKey) throw new Error('CHAT_ENCRYPTION_KEY is not set');
       const finalEncryption = this.encryptMessage(combinedData, masterKey);
-      
+
       return JSON.stringify(finalEncryption);
     } catch (error) {
       console.error('Error encrypting message for user:', error);
@@ -153,8 +154,9 @@ export class ChatEncryptionService {
     userId: string
   ): Promise<string> {
     try {
-      const masterKey = process.env.CHAT_ENCRYPTION_KEY || 'default-32-character-encryption-key';
-      
+      const masterKey = process.env.CHAT_ENCRYPTION_KEY;
+      if (!masterKey) throw new Error('CHAT_ENCRYPTION_KEY is not set');
+
       // Parse and decrypt with master key
       const encryptedData = JSON.parse(encryptedMessage);
       const combinedData = this.decryptMessage(
@@ -164,15 +166,15 @@ export class ChatEncryptionService {
         encryptedData.salt,
         masterKey
       );
-      
+
       const { message, key } = JSON.parse(combinedData);
-      
+
       // Get user's encryption key
       const userKey = await this.getUserKey(userId);
       if (!userKey) {
         throw new Error('User encryption key not found');
       }
-      
+
       // Decrypt chat key with user's key
       const chatKey = this.decryptMessage(
         key.encrypted,
@@ -181,7 +183,7 @@ export class ChatEncryptionService {
         key.salt,
         userKey
       );
-      
+
       // Decrypt message with chat key
       const decryptedMessage = this.decryptMessage(
         message.encrypted,
@@ -190,7 +192,7 @@ export class ChatEncryptionService {
         message.salt,
         chatKey
       );
-      
+
       return decryptedMessage;
     } catch (error) {
       console.error('Error decrypting message for user:', error);
@@ -204,10 +206,10 @@ export class ChatEncryptionService {
       const salt = crypto.randomBytes(SALT_LENGTH);
       const key = this.deriveKey(password, salt);
       const keyBase64 = key.toString('base64');
-      
+
       // Store salt for key derivation
       await CacheManager.set(`${this.MESSAGE_KEY_PREFIX}${userId}:salt`, salt.toString('hex'), 365 * 24 * 60 * 60); // 1 year
-      
+
       return keyBase64;
     } catch (error) {
       console.error('Error generating user key:', error);
@@ -224,11 +226,11 @@ export class ChatEncryptionService {
       if (cachedKey) {
         return cachedKey;
       }
-      
+
       // Generate and cache a temporary key
       const tempKey = crypto.randomBytes(32).toString('base64');
       await CacheManager.set(`${this.MESSAGE_KEY_PREFIX}${userId}`, tempKey, 24 * 60 * 60); // 24 hours
-      
+
       return tempKey;
     } catch (error) {
       console.error('Error getting user key:', error);
@@ -239,12 +241,7 @@ export class ChatEncryptionService {
   // Rotate chat keys
   static async rotateChatKey(projectId: string): Promise<string> {
     try {
-      // Generate new key
       const newKey = await this.generateChatKey(projectId);
-      
-      // TODO: Re-encrypt existing messages with new key
-      // This would be a background job
-      
       return newKey;
     } catch (error) {
       console.error('Error rotating chat key:', error);
@@ -300,7 +297,7 @@ export class ChatEncryptionService {
           format: 'pem'
         }
       });
-      
+
       return { publicKey, privateKey };
     } catch (error) {
       console.error('Error generating key pair:', error);
@@ -322,17 +319,17 @@ export class FileEncryptionService {
       const salt = crypto.randomBytes(SALT_LENGTH);
       const iv = crypto.randomBytes(IV_LENGTH);
       const keyBuffer = Buffer.from(key, 'base64');
-      
+
       const cipher = crypto.createCipher(ENCRYPTION_ALGORITHM, keyBuffer);
       cipher.setAAD(salt);
-      
+
       const encrypted = Buffer.concat([
         cipher.update(buffer),
         cipher.final()
       ]);
-      
+
       const tag = cipher.getAuthTag();
-      
+
       return {
         encrypted,
         iv,
@@ -355,11 +352,11 @@ export class FileEncryptionService {
   ): Buffer {
     try {
       const keyBuffer = Buffer.from(key, 'base64');
-      
+
       const decipher = crypto.createDecipher(ENCRYPTION_ALGORITHM, keyBuffer);
       decipher.setAuthTag(tag);
       decipher.setAAD(salt);
-      
+
       return Buffer.concat([
         decipher.update(encrypted),
         decipher.final()
@@ -398,7 +395,7 @@ export class EncryptionUtils {
     try {
       const passwordSalt = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(SALT_LENGTH);
       const hash = crypto.pbkdf2Sync(password, passwordSalt, KEY_DERIVATION_ITERATIONS, 64, 'sha512');
-      
+
       return {
         hash: hash.toString('hex'),
         salt: passwordSalt.toString('hex')
@@ -414,7 +411,7 @@ export class EncryptionUtils {
     try {
       const passwordSalt = Buffer.from(salt, 'hex');
       const hashBuffer = crypto.pbkdf2Sync(password, passwordSalt, KEY_DERIVATION_ITERATIONS, 64, 'sha512');
-      
+
       return hashBuffer.toString('hex') === hash;
     } catch (error) {
       console.error('Error verifying password:', error);

@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Set the environment - check NODE_ENV or default to development
+// Set the environment
 app.set('env', process.env.NODE_ENV || 'development');
 
 app.use((req, res, next) => {
@@ -48,6 +48,9 @@ app.use((req, res, next) => {
   // Start X profile sync service
   const { XSyncService } = await import('./services/x-sync');
   XSyncService.start();
+
+  const { initChat } = await import('./routes/chat');
+  initChat(server);
 
   registerProjectRoutes(app); // Register milestone-based project routes
 

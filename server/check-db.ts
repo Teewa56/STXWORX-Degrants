@@ -1,14 +1,14 @@
 import { pool } from "./db";
 
 async function checkConnection() {
-  console.log("🔍 Checking PostgreSQL connection...");
+  console.log("🔍 Checking Neon connection...");
   console.log("DATABASE_URL:", process.env.DATABASE_URL ? "✓ Set" : "✗ Not set");
 
   try {
     const client = await pool.connect();
     const result = await client.query("SELECT version()");
-    console.log("✓ PostgreSQL connection successful!");
-    console.log("📊 PostgreSQL version:", result.rows[0].version);
+    console.log("✓ Neon connection successful!");
+    console.log("📊 Neon version:", result.rows[0].version);
     client.release();
 
     // Test a simple query
