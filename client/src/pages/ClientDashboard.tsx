@@ -93,7 +93,7 @@ export default function ClientDashboard() {
       const milestoneAmount = Math.floor(totalMicroUnits / 4);
       const remainder = totalMicroUnits - (milestoneAmount * 4);
       const lastMilestoneAmount = milestoneAmount + remainder;      // Step 1: Create project in database with milestone descriptions
-      const projectResponse = await apiRequest('POST', '/api/projects', {
+      const projectResponse = await apiRequest('POST', '/api/project/new', {
         clientAddress: data.clientAddress,
         freelancerAddress: data.freelancerAddress,
         totalAmount: totalMicroUnits,
@@ -115,8 +115,7 @@ export default function ClientDashboard() {
         milestone4Attachment: data.milestone4Attachment,
       });
       
-      const projectResult = await projectResponse.json();
-      console.log('✅ Step 1 complete: Project saved to database', projectResult);
+      console.log('✅ Step 1 complete: Project saved to database', projectResponse);
       
       // Show toast that wallet approval is needed
       toast({
@@ -160,14 +159,14 @@ export default function ClientDashboard() {
                 console.log('On-chain project ID is safe integer:', Number.isSafeInteger(onChainProjectId));
                 
                 // Step 3: Update project with on-chain details and mark all milestones as funded
-                await apiRequest('PATCH', `/api/projects/${projectResult.id}/on-chain`, {
+                await apiRequest('PATCH', `/api/projects/${projectResponse.id}/on-chain`, {
                   onChainId: onChainProjectId,
                   txId: createTxData.txId
                 });
                 
                 // Mark all milestones as funded since money is in contract
                 for (let i = 1; i <= 4; i++) {
-                  await apiRequest('PATCH', `/api/projects/${projectResult.id}/milestone/${i}/fund`, {});
+                  await apiRequest('PATCH', `/api/projects/${projectResponse.id}/milestone/${i}/fund`, {});
                 }
                 
                 toast({
@@ -175,7 +174,7 @@ export default function ClientDashboard() {
                   description: `${data.amount} ${data.tokenType} locked in escrow. Freelancer can now start work.`,
                 });
                 
-                resolve({ ...projectResult, onChainId: onChainProjectId, txId: createTxData.txId });
+                resolve({ ...projectResponse, onChainId: onChainProjectId, txId: createTxData.txId });
               } catch (err: any) {
                 console.error('Error updating project with on-chain data:', err);
                 reject(err);
@@ -218,6 +217,7 @@ export default function ClientDashboard() {
       });
     },
     onError: (error: any) => {
+      console.log(error);
       toast({
         title: 'Transaction Failed',
         description: error.message || 'Failed to create project. Make sure your wallet is connected and you have sufficient funds.',
@@ -225,9 +225,6 @@ export default function ClientDashboard() {
       });
     },
   });
-
-  // Remove fund milestone mutation - no longer needed
-  // Funds are transferred when project is created
 
   const releaseEscrowMutation = useMutation({
     mutationFn: async ({ 
