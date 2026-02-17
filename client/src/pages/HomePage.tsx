@@ -153,9 +153,6 @@ export default function HomePage() {
                         <span className="text-muted-foreground">
                           {projectCount} {projectCount === 1 ? 'project' : 'projects'}
                         </span>
-                        <span className="text-primary font-medium group-hover:translate-x-1 transition-transform">
-                          Browse →
-                        </span>
                       </div>
                     </CardContent>
                   </Card>
