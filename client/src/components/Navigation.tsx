@@ -17,7 +17,7 @@ import logo from '@/assets/logo.jpg';
 import { useAuth } from '@/hooks/use-auth';
 
 interface NavigationProps {
-  currentPage?: 'home' | 'browse' | 'client' | 'freelancer';
+  currentPage?: 'home' | 'browse' | 'client' | 'freelancer' | 'leaderboard' | 'admin';
 }
 
 export function Navigation({ currentPage = 'home' }: NavigationProps) {
@@ -59,6 +59,15 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
               Browse
             </Button>
           </Link>
+          <Link href="/leaderboard">
+            <Button
+              variant="ghost"
+              className={currentPage === 'leaderboard' ? 'text-primary' : ''}
+              data-testid="nav-link-leaderboard"
+            >
+              Leaderboard
+            </Button>
+          </Link>
 
           {user ? (
             <DropdownMenu>
@@ -79,11 +88,18 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <Link href={user.role === 'client' ? '/client' : '/freelancer'}>
+                  <Link href={user.role === 'client' ? '/client' : user.role === 'freelancer' ? '/freelancer' : '/admin'}>
                     <DropdownMenuItem className="cursor-pointer">
                       Dashboard
                     </DropdownMenuItem>
                   </Link>
+                  {user.role === 'admin' && (
+                    <Link href="/admin/escrow">
+                      <DropdownMenuItem className="cursor-pointer">
+                        Escrow Management
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
                   <Link href="/profile">
                     <DropdownMenuItem className="cursor-pointer">
                       Profile

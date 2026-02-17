@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
 import ChatWidget from '@/components/chat/ChatWidget';
+import XIntegration from '@/components/XIntegration';
 
 // Helper function to get token decimals
 const getTokenDecimals = (tokenType: string): number => {
@@ -150,69 +151,75 @@ export default function FreelancerDashboard() {
             </div>
           </div>
 
-          <Tabs defaultValue="active" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="active">Active Jobs</TabsTrigger>
-              <TabsTrigger value="applications">My Applications</TabsTrigger>
-            </TabsList>
+          <div className="grid lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3">
+              <Tabs defaultValue="active" className="space-y-6">
+                <TabsList>
+                  <TabsTrigger value="active">Active Jobs</TabsTrigger>
+                  <TabsTrigger value="applications">My Applications</TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="active">
-              <div className="space-y-6">
-                {/* Stats Section would go here - omitted for brevity but can keep existing stats logic */}
-
-                <h2 className="text-xl font-semibold">Current Jobs</h2>
-                {isLoadingProjects ? <p>Loading...</p> : activeGigs.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                      No active jobs found. Apply to projects in the Browse section!
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {activeGigs.map(project => (
-                      <ActiveProjectCard
-                        key={project.id}
-                        project={project}
-                        onChatClick={(p) => setActiveChat({
-                          projectId: p.id,
-                          projectTitle: p.milestone1Title || 'Untitled',
-                          otherUserName: p.clientAddress, // Freelancer sees client address/username
-                          otherUserRole: 'client'
-                        })}
-                        onComplete={(milestoneNum) => {
-                          setSelectedMilestone({
-                            projectId: project.id,
-                            onChainId: project.onChainId,
-                            milestoneNum
-                          });
-                          setCompletionDialogOpen(true);
-                        }}
-                      />
-                    ))}
+                <TabsContent value="active">
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-semibold">Current Jobs</h2>
+                    {isLoadingProjects ? <p>Loading...</p> : activeGigs.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                          No active jobs found. Apply to projects in the Browse section!
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {activeGigs.map(project => (
+                          <ActiveProjectCard
+                            key={project.id}
+                            project={project}
+                            onChatClick={(p) => setActiveChat({
+                              projectId: p.id,
+                              projectTitle: p.milestone1Title || 'Untitled',
+                              otherUserName: p.clientAddress,
+                              otherUserRole: 'client'
+                            })}
+                            onComplete={(milestoneNum) => {
+                              setSelectedMilestone({
+                                projectId: project.id,
+                                onChainId: project.onChainId,
+                                milestoneNum
+                              });
+                              setCompletionDialogOpen(true);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </TabsContent>
+                </TabsContent>
 
-            <TabsContent value="applications">
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Application Status</h2>
-                {isLoadingApps ? <p>Loading applications...</p> : applications?.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                      You haven't applied to any projects yet.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4">
-                    {applications?.map(app => (
-                      <ApplicationStatusCard key={app.id} application={app} />
-                    ))}
+                <TabsContent value="applications">
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-semibold">Application Status</h2>
+                    {isLoadingApps ? <p>Loading applications...</p> : applications?.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                          You haven't applied to any projects yet.
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid gap-4">
+                        {applications?.map(app => (
+                          <ApplicationStatusCard key={app.id} application={app} />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+                </TabsContent>
+              </Tabs>
+            </div>
+            
+            <div className="space-y-6">
+              <XIntegration />
+            </div>
+          </div>
         </div>
       </main>
 
@@ -262,27 +269,30 @@ export default function FreelancerDashboard() {
               })}
               disabled={completeEscrowMutation.isPending}
             >
-              {completeEscrowMutation.isPending ? 'Submitting...' : 'Submit'}
+              {completeEscrowMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Mark Complete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Footer />
+
       {activeChat && (
         <ChatWidget
-          key={activeChat.projectId}
           projectId={activeChat.projectId}
           projectTitle={activeChat.projectTitle}
           otherUserName={activeChat.otherUserName}
-          otherUserRole="client"
+          otherUserRole={activeChat.otherUserRole}
+          onClose={() => setActiveChat(null)}
         />
       )}
+
+      <Footer />
     </div>
   );
 }
 
 function ApplicationStatusCard({ application }: { application: EnrichedApplication }) {
-  return (
+  // ...
     <Card>
       <CardHeader className="py-4">
         <div className="flex justify-between items-center">

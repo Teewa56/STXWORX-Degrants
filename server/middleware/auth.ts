@@ -7,9 +7,9 @@ import { storage } from '../storage';
 import { EncryptionUtils } from '../services/encryption';
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-min-32-chars';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const MFA_SECRET_KEY = process.env.MFA_SECRET_KEY || 'your-mfa-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN!;
+const MFA_SECRET_KEY = process.env.MFA_SECRET_KEY!;
 
 // Token types
 export interface JWTPayload {

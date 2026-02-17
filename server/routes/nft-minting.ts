@@ -221,7 +221,7 @@ router.post('/mint', async (req, res) => {
     const cid = await IPFSService.uploadJSON({
       name: `Degrants Achievement: ${achievementType}`,
       description: metadata?.description || ACHIEVEMENT_REQUIREMENTS[achievementType as keyof typeof ACHIEVEMENT_REQUIREMENTS].description,
-      image: metadata?.image || process.env.NFT_IMAGE_PLACEHOLDER || 'https://stxworx.io/nft-placeholder.png',
+      image: metadata?.image || process.env.NFT_IMAGE_PLACEHOLDER!,
       attributes: [
         { trait_type: 'Achievement', value: achievementType },
         { trait_type: 'Proposer', value: requestUserId },
@@ -242,7 +242,7 @@ router.post('/mint', async (req, res) => {
       transactionId: txid,
       metadataUrl: metadataUrl,
       tokenId: null, // Will be updated by monitor
-      contractAddress: process.env.NFT_CONTRACT_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM'
+      contractAddress: process.env.NFT_CONTRACT_ADDRESS!
     }).returning();
 
     res.json({

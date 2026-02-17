@@ -22,7 +22,7 @@ const userSockets = new Map<string, string>(); // userId -> socketId
 export function initChat(server: Server): SocketIOServer {
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: process.env.CLIENT_URL!,
       methods: ["GET", "POST"]
     }
   });

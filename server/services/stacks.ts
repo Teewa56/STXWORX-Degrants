@@ -9,9 +9,9 @@ import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 import { type DaoProposal } from '@shared/schema';
 
 // Load environment variables
-const STX_NETWORK = process.env.STX_NETWORK || 'testnet';
-const STX_MINTER_KEY = process.env.STX_MINTER_KEY;
-const CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
+const STX_NETWORK = process.env.STX_NETWORK!;
+const STX_MINTER_KEY = process.env.STX_MINTER_KEY!;
+const CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS!;
 const CONTRACT_NAME = 'achievement-nfts';
 
 export class StacksService {

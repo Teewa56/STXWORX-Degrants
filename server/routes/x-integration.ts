@@ -14,7 +14,7 @@ import { storage } from '../storage';
 import { XAuthService } from '../services/x-auth';
 import { CacheManager } from '../middleware/redis';
 import { authenticateToken } from '../middleware/auth';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -35,11 +35,16 @@ const checkXApi = (req: any, res: any, next: any) => {
   next();
 };
 
-// 1. Initiate X OAuth Flow
-router.get('/authorize', authenticateToken, async (req: any, res) => {
+// 1. Initiate X OAuth Flow (no auth required - for connecting X accounts)
+router.get('/authorize', async (req: any, res) => {
   try {
-    const userId = req.user.userId;
-    const authUrl = await XAuthService.generateAuthUrl(userId);
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    const authUrl = await XAuthService.generateAuthUrl(userId as string);
     res.json({ url: authUrl });
   } catch (error) {
     console.error('Error initiating X auth:', error);
@@ -98,7 +103,7 @@ router.get('/callback', async (req, res) => {
     }
 
     // Redirect to frontend with success
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.CLIENT_URL!;
     res.redirect(`${frontendUrl}/dashboard?x_connected=true`);
 
   } catch (error) {
@@ -290,19 +295,15 @@ router.get('/all', async (req, res) => {
     const { page = 1, limit = 50, verified } = req.query;
 
     let query = db.select({
-      xIntegrations: {
-        id: true,
-        userId: true,
-        handle: true,
-        verified: true,
-        followerCount: true,
-        engagementScore: true,
-        lastSync: true
-      },
-      users: {
-        username: true,
-        id: true
-      }
+      id: xIntegrations.id,
+      userId: xIntegrations.userId,
+      handle: xIntegrations.handle,
+      verified: xIntegrations.verified,
+      followerCount: xIntegrations.followerCount,
+      engagementScore: xIntegrations.engagementScore,
+      lastSync: xIntegrations.lastSync,
+      username: users.username,
+      userDisplayName: users.displayName
     })
       .from(xIntegrations)
       .leftJoin(users, eq(xIntegrations.userId, users.id));
@@ -314,8 +315,7 @@ router.get('/all', async (req, res) => {
     const integrations = await query
       .orderBy(desc(xIntegrations.lastSync))
       .limit(parseInt(limit as string))
-      .offset((parseInt(page as string) - 1) * parseInt(limit as string))
-      .execute();
+      .offset((parseInt(page as string) - 1) * parseInt(limit as string));
 
     res.json({
       success: true,
@@ -352,33 +352,30 @@ router.delete('/disconnect/:userId', async (req, res) => {
 // Get X statistics
 router.get('/stats', async (req, res) => {
   try {
-    const totalIntegrations = await db.select({ count: xIntegrations.userId })
-      .from(xIntegrations)
-      .execute();
+    const totalIntegrations = await db.select({ count: sql`count(*)` })
+      .from(xIntegrations);
 
-    const verifiedIntegrations = await db.select({ count: sql`count(${xIntegrations.userId})` })
+    const verifiedIntegrations = await db.select({ count: sql`count(*)` })
       .from(xIntegrations)
-      .where(eq(xIntegrations.verified, true))
-      .execute();
+      .where(eq(xIntegrations.verified, true));
 
-    const avgFollowers = await db.select({ avg: xIntegrations.followerCount })
-      .from(xIntegrations)
-      .execute();
+    const avgFollowers = await db.select({ avg: sql`AVG(${xIntegrations.followerCount})` })
+      .from(xIntegrations);
 
-    const avgEngagement = await db.select({ avg: xIntegrations.engagementScore })
-      .from(xIntegrations)
-      .execute();
+    const avgEngagement = await db.select({ avg: sql`AVG(${xIntegrations.engagementScore})` })
+      .from(xIntegrations);
+
+    const totalCount = (totalIntegrations[0]?.count as number) || 0;
+    const verifiedCount = (verifiedIntegrations[0]?.count as number) || 0;
 
     res.json({
       success: true,
       data: {
-        totalIntegrations: totalIntegrations[0].count || 0,
-        verifiedIntegrations: verifiedIntegrations[0].count || 0,
-        verificationRate: (totalIntegrations[0].count as number) > 0
-          ? ((verifiedIntegrations[0].count as number) / (totalIntegrations[0].count as number)) * 100
-          : 0,
-        averageFollowers: Math.floor(avgFollowers[0].avg || 0),
-        averageEngagementScore: Math.floor(avgEngagement[0].avg || 0)
+        totalIntegrations: totalCount,
+        verifiedIntegrations: verifiedCount,
+        verificationRate: totalCount > 0 ? (verifiedCount / totalCount) * 100 : 0,
+        averageFollowers: Math.floor((avgFollowers[0]?.avg as number) || 0),
+        averageEngagementScore: Math.floor((avgEngagement[0]?.avg as number) || 0)
       }
     });
   } catch (error) {

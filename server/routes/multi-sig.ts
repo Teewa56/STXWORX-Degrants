@@ -12,9 +12,9 @@ const router = Router();
 
 // Multi-sig configuration
 const SIGNERS = process.env.MULTISIG_SIGNERS?.split(',') || [];
-const THRESHOLD = parseInt(process.env.MULTISIG_THRESHOLD || '3');
-const TIMELOCK = parseInt(process.env.MULTISIG_TIMELOCK || '86400'); // 24 hours
-const MULTISIG_CONTRACT_ADDRESS = process.env.MULTISIG_CONTRACT_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
+const THRESHOLD = parseInt(process.env.MULTISIG_THRESHOLD!);
+const TIMELOCK = parseInt(process.env.MULTISIG_TIMELOCK!); // 24 hours
+const MULTISIG_CONTRACT_ADDRESS = process.env.MULTISIG_CONTRACT_ADDRESS!;
 const MULTISIG_CONTRACT_NAME = 'freelance-security';
 
 // Request schemas

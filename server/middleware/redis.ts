@@ -1,9 +1,8 @@
-import Redis from 'ioredis';
 import { createClient } from 'redis';
 
 // Redis configuration
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const REDIS_CACHE_URL = process.env.REDIS_CACHE_URL || REDIS_URL;
+const REDIS_URL = process.env.REDIS_URL!;
+const REDIS_CACHE_URL = process.env.REDIS_CACHE_URL!;
 
 // Main Redis client for session management
 export const redisClient = createClient({
@@ -170,7 +169,7 @@ export class SessionManager {
 // Cache management
 export class CacheManager {
   private static readonly CACHE_PREFIX = 'cache:';
-  private static readonly DEFAULT_TTL = parseInt(process.env.CACHE_TTL || '3600'); // 1 hour
+  private static readonly DEFAULT_TTL = parseInt(process.env.CACHE_TTL!); // 1 hour
 
   // Set cache
   static async set(key: string, value: any, ttl?: number): Promise<void> {

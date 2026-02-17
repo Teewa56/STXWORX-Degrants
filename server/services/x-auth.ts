@@ -2,9 +2,9 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { CacheManager } from '../middleware/redis';
 
-const X_CLIENT_ID = process.env.X_CLIENT_ID;
-const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
-const X_REDIRECT_URI = process.env.X_REDIRECT_URI || 'http://localhost:5000/api/x/callback';
+const X_CLIENT_ID = process.env.X_CLIENT_ID!;
+const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET!;
+const X_REDIRECT_URI = process.env.X_REDIRECT_URI!;
 
 export interface XTokens {
     accessToken: string;

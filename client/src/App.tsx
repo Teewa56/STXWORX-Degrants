@@ -11,6 +11,8 @@ import ClientDashboard from "@/pages/ClientDashboard";
 import FreelancerDashboard from "@/pages/FreelancerDashboard";
 import Browse from "@/pages/Browse";
 import AdminSetup from "@/pages/AdminSetup";
+import AdminEscrowManagement from "@/pages/AdminEscrowManagement";
+import Leaderboard from "@/pages/Leaderboard";
 import FAQ from "@/pages/FAQ";
 import About from "@/pages/About";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -33,9 +35,11 @@ function Router() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/profile" component={Profile} />
       <Route path="/browse" component={Browse} />
+      <Route path="/leaderboard" component={Leaderboard} />
       <ProtectedRoute path="/client" component={ClientDashboard} allowedRoles={["client"]} />
       <ProtectedRoute path="/freelancer" component={FreelancerDashboard} allowedRoles={["freelancer"]} />
       <ProtectedRoute path="/admin" component={AdminSetup} allowedRoles={["admin"]} />
+      <ProtectedRoute path="/admin/escrow" component={AdminEscrowManagement} allowedRoles={["admin"]} />
       <Route path="/faq" component={FAQ} />
       <Route path="/about" component={About} />
       <Route path="/privacy" component={PrivacyPolicy} />

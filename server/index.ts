@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Set the environment
-app.set('env', process.env.NODE_ENV || 'development');
+app.set('env', process.env.NODE_ENV!);
 
 app.use((req, res, next) => {
   const start = Date.now();

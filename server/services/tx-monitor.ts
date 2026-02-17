@@ -3,7 +3,7 @@ import { nftAchievements } from '@shared/schema';
 import { eq, isNull } from 'drizzle-orm';
 import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 
-const STX_NETWORK = process.env.STX_NETWORK || 'testnet';
+const STX_NETWORK = process.env.STX_NETWORK!;
 const API_URL = STX_NETWORK === 'mainnet' ? 'https://api.mainnet.hiro.so' : 'https://api.testnet.hiro.so';
 
 export class TransactionMonitor {

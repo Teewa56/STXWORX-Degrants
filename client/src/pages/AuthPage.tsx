@@ -29,8 +29,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, Shield, Twitter } from "lucide-react";
 import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient";
 
 const registerSchema = insertUserSchema.extend({
     confirmPassword: z.string()
@@ -44,6 +45,17 @@ type RegisterData = z.infer<typeof registerSchema>;
 export default function AuthPage() {
     const { user, loginMutation, registerMutation } = useAuth();
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+
+    const handleXLogin = async () => {
+        try {
+            // Create a temporary user ID for X auth flow
+            const tempUserId = 'temp-' + Date.now();
+            const response = await apiRequest('GET', `/api/x/authorize?userId=${tempUserId}`);
+            window.location.href = response.url;
+        } catch (error) {
+            console.error('X login failed:', error);
+        }
+    };
 
     const loginForm = useForm({
         defaultValues: {
@@ -145,6 +157,28 @@ export default function AuthPage() {
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             )}
                                             Login
+                                        </Button>
+
+                                        <div className="relative">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <span className="w-full border-t" />
+                                            </div>
+                                            <div className="relative flex justify-center text-xs uppercase">
+                                                <span className="bg-background px-2 text-muted-foreground">
+                                                    Or continue with
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => handleXLogin()}
+                                            disabled={loginMutation.isPending}
+                                        >
+                                            <Twitter className="mr-2 h-4 w-4" />
+                                            Login with X (Twitter)
                                         </Button>
                                     </form>
                                 </Form>
