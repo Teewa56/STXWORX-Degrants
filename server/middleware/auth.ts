@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
 import { SessionManager, CacheManager } from './redis';
@@ -66,10 +66,10 @@ export class JWTManager {
       }) as JWTPayload;
 
       return decoded;
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
         console.log('Token expired');
-      } else if (error instanceof jwt.JsonWebTokenError) {
+      } else if (error.name === 'JsonWebTokenError') {
         console.log('Invalid token');
       } else {
         console.error('Token verification error:', error);

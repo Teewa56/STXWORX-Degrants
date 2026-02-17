@@ -40,6 +40,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize Redis connections
+  const { initializeRedis } = await import('./middleware/redis');
+  await initializeRedis();
+
   const server = await registerRoutes(app);
 
   // Start blockchain transaction monitor

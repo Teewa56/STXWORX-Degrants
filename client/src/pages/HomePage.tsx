@@ -230,64 +230,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Dashboard Selection Section */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold mb-3">Get Started</h3>
-            <p className="text-muted-foreground">Choose your path</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card className="group" data-testid="card-client">
-              <CardHeader className="pb-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/30 transition-colors">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">I'm a Client</CardTitle>
-                <CardDescription className="text-base">
-                  Post gigs and securely lock funds in blockchain escrow
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/client">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-white hover:to-white hover:text-primary hover:shadow-lg hover:shadow-primary/30 transition-all border-2 border-transparent hover:border-primary" 
-                    size="lg"
-                    data-testid="button-client-dashboard"
-                  >
-                    Go to Client Dashboard
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="group" data-testid="card-freelancer">
-              <CardHeader className="pb-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/30 transition-colors">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">I'm a Freelancer</CardTitle>
-                <CardDescription className="text-base">
-                  Browse escrows and manage your guaranteed payments
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/freelancer">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-white hover:to-white hover:text-primary hover:shadow-lg hover:shadow-primary/30 transition-all border-2 border-transparent hover:border-primary" 
-                    size="lg"
-                    data-testid="button-freelancer-dashboard"
-                  >
-                    Go to Freelancer Dashboard
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* Footer CTA */}
       <section className="py-16 bg-gradient-to-r from-primary/20 to-orange-600/20 border-t border-primary/30">
         <div className="container mx-auto px-4 text-center">
