@@ -53,7 +53,6 @@ export const updateProfileSchema = createInsertSchema(users).omit({
   username: true,
   password: true,
   salt: true,
-  role: true,
   mfaEnabled: true,
   mfaSecret: true,
 }).partial();

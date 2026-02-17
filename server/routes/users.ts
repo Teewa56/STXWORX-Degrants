@@ -70,6 +70,13 @@ router.patch("/me", authenticateToken, async (req: AuthenticatedRequest, res) =>
 
         const data = updateProfileSchema.parse(req.body);
 
+        // Check if there are any valid fields to update
+        const validUpdates = Object.entries(data).filter(([_, value]) => value !== undefined && value !== null && value !== "");
+        
+        if (validUpdates.length === 0) {
+            return res.status(400).json({ error: "No valid fields to update" });
+        }
+
         // Prevent updating sensitive fields through this endpoint if not already handled by schema
         // The schema should already be partial and omit sensitive fields, but good to be double sure
         if ((data as any).password || (data as any).salt || (data as any).id) {

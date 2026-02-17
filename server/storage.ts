@@ -85,8 +85,19 @@ export class NeonStorage implements IStorage {
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
     const { users } = await import("@shared/schema");
+    
+    // Check if there are any valid fields to update
+    const validUpdates = Object.entries(updates).filter(([_, value]) => value !== undefined && value !== null && value !== "");
+    
+    if (validUpdates.length === 0) {
+      throw new Error("No valid fields to update");
+    }
+    
+    // Only pass the valid updates to the database
+    const updateData = Object.fromEntries(validUpdates);
+    
     const [result] = await db.update(users)
-      .set(updates)
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return result;
