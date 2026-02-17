@@ -4,7 +4,7 @@ import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Zap, Coins, TrendingUp, Clock, CheckCircle2, Upload, FileText, Briefcase, MessageSquare } from 'lucide-react';
+import { Zap, Coins, TrendingUp, Clock, CheckCircle2, Upload, FileText, Briefcase, MessageSquare, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { type Project, type Application } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
@@ -293,6 +293,7 @@ export default function FreelancerDashboard() {
 
 function ApplicationStatusCard({ application }: { application: EnrichedApplication }) {
   // ...
+  return (
     <Card>
       <CardHeader className="py-4">
         <div className="flex justify-between items-center">
