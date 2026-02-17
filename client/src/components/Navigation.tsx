@@ -145,24 +145,52 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
                   Browse Projects
                 </Button>
               </Link>
-              <Link href="/client">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Client Dashboard
-                </Button>
-              </Link>
-              <Link href="/freelancer">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Freelancer Dashboard
-                </Button>
-              </Link>
+
+              {user ? (
+                <>
+                  <Link href={user.role === 'client' ? '/client' : '/freelancer'}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Link href="/profile">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600 hover:text-red-600"
+                    onClick={() => {
+                      logoutMutation.mutate();
+                      setMobileMenuOpen(false);
+                    }}
+                    disabled={logoutMutation.isPending}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <Link href="/auth">
+                  <Button
+                    variant="default"
+                    className="w-full justify-start gap-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4" />
+                    Login
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )
