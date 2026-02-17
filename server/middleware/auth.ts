@@ -7,8 +7,10 @@ import { storage } from '../storage';
 import { EncryptionUtils } from '../services/encryption';
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN!;
+const ACCCESS_TOKEN_EXPIRES_IN = process.env.ACCCESS_TOKEN_EXPIRES_IN!;
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN!;
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET!;
 const MFA_SECRET_KEY = process.env.MFA_SECRET_KEY!;
 
 // Token types
@@ -32,8 +34,8 @@ export class JWTManager {
   // Generate access token
   static generateAccessToken(payload: JWTPayload): string {
     try {
-      return jwt.sign(payload, JWT_SECRET, {
-        expiresIn: JWT_EXPIRES_IN as any,
+      return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
+        expiresIn: ACCCESS_TOKEN_EXPIRES_IN as any,
         issuer: 'stxworx-degrants',
         audience: 'stxworx-users'
       });
@@ -48,8 +50,8 @@ export class JWTManager {
     try {
       return jwt.sign(
         { userId, type: 'refresh' },
-        JWT_SECRET,
-        { expiresIn: '7d' }
+        REFRESH_TOKEN_SECRET,
+        { expiresIn: REFRESH_TOKEN_EXPIRES_IN as any }
       );
     } catch (error) {
       console.error('Error generating refresh token:', error);
@@ -60,7 +62,7 @@ export class JWTManager {
   // Verify token
   static verifyToken(token: string): JWTPayload | null {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET, {
+      const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET, {
         issuer: 'stxworx-degrants',
         audience: 'stxworx-users'
       }) as JWTPayload;
@@ -81,7 +83,7 @@ export class JWTManager {
   // Refresh access token
   static async refreshToken(refreshToken: string): Promise<{ accessToken: string; sessionId: string } | null> {
     try {
-      const decoded = jwt.verify(refreshToken, JWT_SECRET) as any;
+      const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as any;
 
       if (decoded.type !== 'refresh') {
         return null;

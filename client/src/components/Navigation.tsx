@@ -59,15 +59,6 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
               Browse
             </Button>
           </Link>
-          <Link href="/leaderboard">
-            <Button
-              variant="ghost"
-              className={currentPage === 'leaderboard' ? 'text-primary' : ''}
-              data-testid="nav-link-leaderboard"
-            >
-              Leaderboard
-            </Button>
-          </Link>
 
           {user ? (
             <DropdownMenu>
@@ -104,6 +95,15 @@ export function Navigation({ currentPage = 'home' }: NavigationProps) {
                     <DropdownMenuItem className="cursor-pointer">
                       Profile
                     </DropdownMenuItem>
+                  </Link>
+                   <Link href="/leaderboard">
+                    <Button
+                      variant="ghost"
+                      className={currentPage === 'leaderboard' ? 'text-primary' : ''}
+                      data-testid="nav-link-leaderboard"
+                    >
+                      Leaderboard
+                    </Button>
                   </Link>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
