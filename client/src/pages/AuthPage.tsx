@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, InsertUser } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Twitter, Loader2, Shield } from "lucide-react";
+import { useAuth } from '@/hooks/use-auth';
+import { apiRequest } from '@/lib/queryClient';
+import { useErrorHandler } from '@/lib/toastHandler';
 import {
     Form,
     FormControl,
@@ -20,8 +19,8 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Redirect } from "wouter";
+import { insertUserSchema, InsertUser } from "@shared/schema";
 import {
     Select,
     SelectContent,
@@ -29,9 +28,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Shield, Twitter } from "lucide-react";
-import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 
 const registerSchema = insertUserSchema.extend({
     confirmPassword: z.string()
@@ -45,6 +41,7 @@ type RegisterData = z.infer<typeof registerSchema>;
 export default function AuthPage() {
     const { user, loginMutation, registerMutation } = useAuth();
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+    const { handleError } = useErrorHandler();
 
     const handleXLogin = async () => {
         try {
@@ -54,7 +51,7 @@ export default function AuthPage() {
             const data = await response.json();
             window.location.href = data.url;
         } catch (error) {
-            console.error('X login failed:', error);
+            handleError(error, 'Unable to connect to X (Twitter). Please try again.');
         }
     };
 

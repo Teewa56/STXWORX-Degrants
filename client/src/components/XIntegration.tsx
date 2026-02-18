@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Twitter, Link2, Unlink, CheckCircle, Users, TrendingUp } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Twitter, Link2, CheckCircle, RefreshCw, Users, TrendingUp, Unlink } from 'lucide-react';
+import { useErrorHandler } from '@/lib/toastHandler';
 
 interface XIntegrationData {
   id: string;
@@ -20,79 +20,62 @@ interface XIntegrationData {
 
 export default function XIntegration() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { handleError, handleSuccess } = useErrorHandler();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const { data: xIntegration, refetch } = useQuery({
     queryKey: ['x-integration', user?.id],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id) throw new Error('User not found');
       const response = await apiRequest('GET', `/api/x/user/${user.id}`);
-      return response.data as XIntegrationData;
+      const data = await response.json();
+      return data.data as XIntegrationData;
     },
     enabled: !!user?.id,
   });
 
   const connectMutation = useMutation({
     mutationFn: async () => {
+      if (!user?.id) throw new Error('User not found');
       setIsConnecting(true);
-      const response = await apiRequest('GET', `/api/x/authorize?userId=${user?.id}`);
+      const response = await apiRequest('GET', `/api/x/authorize?userId=${user.id}`);
       const data = await response.json();
       window.location.href = data.url;
     },
     onSuccess: () => {
-      toast({
-        title: "Redirecting to X",
-        description: "You'll be redirected to authorize your X account",
-      });
+      handleSuccess('Redirecting to X', 'You\'ll be redirected to authorize your X account');
     },
     onError: (error) => {
-      toast({
-        title: "Connection failed",
-        description: "Failed to connect X account. Please try again.",
-        variant: "destructive",
-      });
+      handleError(error, 'Failed to connect X account. Please try again.');
       setIsConnecting(false);
     },
   });
 
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest('DELETE', `/api/x/disconnect/${user?.id}`);
+      if (!user?.id) throw new Error('User not found');
+      await apiRequest('DELETE', `/api/x/disconnect/${user.id}`);
     },
     onSuccess: () => {
-      toast({
-        title: "X account disconnected",
-        description: "Your X account has been disconnected successfully",
-      });
+      handleSuccess('X account disconnected', 'Your X account has been disconnected successfully');
       refetch();
     },
-    onError: () => {
-      toast({
-        title: "Disconnection failed",
-        description: "Failed to disconnect X account. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error) => {
+      handleError(error, 'Failed to disconnect X account. Please try again.');
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest('POST', `/api/x/sync/${user?.id}`);
+      if (!user?.id) throw new Error('User not found');
+      await apiRequest('POST', `/api/x/sync/${user.id}`);
     },
     onSuccess: () => {
-      toast({
-        title: "X data synced",
-        description: "Your X profile data has been updated",
-      });
+      handleSuccess('X data synced', 'Your X profile data has been updated');
       refetch();
     },
-    onError: () => {
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync X data. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error) => {
+      handleError(error, 'Failed to sync X data. Please try again.');
     },
   });
 
