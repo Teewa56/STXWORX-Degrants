@@ -55,20 +55,32 @@ router.get('/authorize', async (req: any, res) => {
 // 2. OAuth Callback
 router.get('/callback', async (req, res) => {
   try {
-    const { code, state } = req.query;
+    const { code, state, error: oauthError, error_description } = req.query;
+
+    // Handle OAuth errors from X
+    if (oauthError) {
+      console.error('OAuth error from X:', { error: oauthError, description: error_description });
+      return res.status(400).json({ 
+        error: `OAuth error: ${oauthError}`,
+        description: error_description || 'Unknown OAuth error'
+      });
+    }
 
     if (!code || !state) {
-      return res.status(400).json({ error: 'Missing code or state' });
+      return res.status(400).json({ error: 'Missing code or state parameter from X callback' });
     }
 
     // Retrieve state from cache
     const cachedData = await CacheManager.get(`x_auth_state:${state}`);
     if (!cachedData) {
-      return res.status(400).json({ error: 'Invalid or expired state' });
+      console.error('Invalid or expired state:', state);
+      return res.status(400).json({ error: 'Invalid or expired authorization state. Please try again.' });
     }
 
     const { userId, verifier } = cachedData;
     await CacheManager.delete(`x_auth_state:${state}`);
+
+    console.log('Processing X OAuth callback for user:', userId);
 
     // Exchange code for tokens
     const tokens = await XAuthService.exchangeCodeForTokens(code as string, verifier);
@@ -76,7 +88,8 @@ router.get('/callback', async (req, res) => {
     // Get user profile using the new access token
     const userProfile = await fetchXMeProfile(tokens.accessToken);
     if (!userProfile) {
-      return res.status(400).json({ error: 'Failed to fetch X profile' });
+      console.error('Failed to fetch X profile:', userProfile);
+      return res.status(400).json({ error: 'Failed to fetch user profile from X' });
     }
 
     // Calculate engagement score
@@ -104,11 +117,15 @@ router.get('/callback', async (req, res) => {
 
     // Redirect to frontend with success
     const frontendUrl = process.env.CLIENT_URL!;
+    console.log('Redirecting to frontend:', `${frontendUrl}/dashboard?x_connected=true`);
     res.redirect(`${frontendUrl}/dashboard?x_connected=true`);
 
   } catch (error) {
     console.error('Error in X callback:', error);
-    res.status(500).json({ error: 'X connection failed' });
+    res.status(500).json({ 
+      error: 'X connection failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

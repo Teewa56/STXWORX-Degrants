@@ -274,6 +274,20 @@ export default function Profile() {
                         </Card>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {user.role === 'client' && (
+                        <>
+                            <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 hover:border-primary/40">
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Building className="w-5 h-5 text-primary" />
+                                        <CardTitle className="text-lg">Active Projects</CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <div className="text-3xl lg:text-4xl font-bold text-primary">{user.activeProjects || 0}</div>
+                                    <p className="text-muted-foreground text-sm mt-1">Currently managing</p>
+                                </CardContent>
+                            </Card>
                             <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 hover:border-primary/40">
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center gap-2">
@@ -283,33 +297,11 @@ export default function Profile() {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                     <div className="text-3xl lg:text-4xl font-bold text-primary">{user.reputation || 0}</div>
-                                    <p className="text-muted-foreground text-sm mt-1">Points based on completed jobs</p>
+                                    <p className="text-muted-foreground text-sm mt-1">Points based on successful collaborations</p>
                                 </CardContent>
                             </Card>
-                            <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 hover:border-primary/40">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-center gap-2">
-                                        <Briefcase className="w-5 h-5 text-green-500" />
-                                        <CardTitle className="text-lg">Completed Projects</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <div className="text-3xl lg:text-4xl font-bold text-green-500">{user.completedProjects || 0}</div>
-                                    <p className="text-muted-foreground text-sm mt-1">Successfully delivered</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="group hover:shadow-lg transition-all duration-300 border-primary/20 hover:border-primary/40">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-center gap-2">
-                                        <TrendingUp className="w-5 h-5 text-blue-500" />
-                                        <CardTitle className="text-lg">Total Earnings</CardTitle>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <div className="text-3xl lg:text-4xl font-bold text-blue-500">{user.totalEarnings || 0} <span className="text-lg font-normal">STX</span></div>
-                                    <p className="text-muted-foreground text-sm mt-1">Lifetime earnings</p>
-                                </CardContent>
-                            </Card>
+                        </>
+                    )}
                         </div>
                     )}
                 </TabsContent>

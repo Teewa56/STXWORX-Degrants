@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -42,6 +42,23 @@ export default function AuthPage() {
     const { user, loginMutation, registerMutation } = useAuth();
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
     const { handleError } = useErrorHandler();
+
+    // Handle X OAuth callback
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const xConnected = urlParams.get('x_connected');
+        
+        if (xConnected === 'true') {
+            // Show success message and redirect to dashboard
+            handleError('X account connected successfully!', 'You can now use X features in your dashboard.');
+            
+            // Redirect to appropriate dashboard after a short delay
+            setTimeout(() => {
+                const redirectPath = user?.role === "admin" ? "/admin" : user?.role === "freelancer" ? "/freelancer" : "/client";
+                window.location.href = redirectPath;
+            }, 2000);
+        }
+    }, [user]);
 
     const handleXLogin = async () => {
         try {

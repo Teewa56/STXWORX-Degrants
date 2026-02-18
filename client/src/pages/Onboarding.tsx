@@ -231,21 +231,71 @@ export default function Onboarding() {
                     {step === 3 && (
                         <>
                             <CardHeader>
-                                <CardTitle>Connect Socials</CardTitle>
-                                <CardDescription>Verify your identity and build trust.</CardDescription>
+                                <CardTitle>Complete Your Profile</CardTitle>
+                                <CardDescription>Finish setting up your profile to get started.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="flex items-center justify-between p-4 border rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <Twitter className="h-5 w-5 text-blue-400" />
+                                        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                            <User className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+                                        </div>
                                         <div>
-                                            <p className="font-medium">X (formerly Twitter)</p>
+                                            <p className="font-medium">Optional: Connect Socials</p>
                                             <p className="text-xs text-muted-foreground">Verify identity & display stats</p>
                                         </div>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={() => window.open('/api/x/authorize', '_blank')}>
                                         Connect
                                     </Button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="displayName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Display Name</FormLabel>
+                                                <FormControl><Input {...field} placeholder="John Doe" /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="title"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Professional Title</FormLabel>
+                                                <FormControl><Input {...field} placeholder={role === 'client' ? "Product Manager" : "Full Stack Developer"} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="company"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Company (Optional)</FormLabel>
+                                                <FormControl><Input {...field} placeholder="Acme Inc." /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="bio"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Bio</FormLabel>
+                                                <FormControl><Textarea {...field} placeholder="Tell us a bit about yourself..." /></FormControl>
+                                                <FormDescription>Brief description for your profile.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                             </CardContent>
                             <CardFooter>
