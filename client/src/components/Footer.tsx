@@ -36,16 +36,6 @@ export function Footer() {
                   Browse Projects
                 </Link>
               </li>
-              <li>
-                <Link href="/client" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Client Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/freelancer" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Freelancer Dashboard
-                </Link>
-              </li>
             </ul>
           </div>
 
