@@ -65,6 +65,7 @@ export default function MessageCenter({
   );
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showConversationList, setShowConversationList] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversations from API
@@ -125,6 +126,18 @@ export default function MessageCenter({
     sendMessageMutation.mutate(newMessage);
   };
 
+  const handleSelectChat = (chat: ChatConversation) => {
+    setSelectedChat(chat);
+    // On mobile, hide conversation list when chat is selected
+    if (window.innerWidth < 768) {
+      setShowConversationList(false);
+    }
+  };
+
+  const handleBackToList = () => {
+    setShowConversationList(true);
+  };
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -159,8 +172,8 @@ export default function MessageCenter({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-6xl h-[80vh] max-h-[800px] flex flex-col">
-        <CardHeader className="border-b flex flex-row items-center justify-between bg-primary/5">
+      <Card className="w-full h-[90vh] max-h-[900px] flex flex-col md:max-w-6xl md:h-[80vh] md:max-h-[800px]">
+        <CardHeader className="border-b flex flex-row items-center justify-between bg-primary/5 shrink-0">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             Messages
@@ -170,9 +183,10 @@ export default function MessageCenter({
           </Button>
         </CardHeader>
 
-        <CardContent className="flex-1 p-0 overflow-hidden flex">
+        <CardContent className="flex-1 p-0 overflow-hidden hidden md:flex">
+          {/* Desktop Layout - Side by Side */}
           {/* Conversations List */}
-          <div className="w-80 border-r flex flex-col">
+          <div className="w-80 border-r flex flex-col shrink-0">
             <div className="p-4 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -242,7 +256,7 @@ export default function MessageCenter({
           <div className="flex-1 flex flex-col">
             {selectedChat ? (
               <>
-                <div className="p-4 border-b bg-primary/5">
+                <div className="p-4 border-b bg-primary/5 shrink-0">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback>
@@ -301,7 +315,7 @@ export default function MessageCenter({
                   )}
                 </ScrollArea>
 
-                <div className="p-4 border-t bg-background">
+                <div className="p-4 border-t bg-background shrink-0">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -339,6 +353,178 @@ export default function MessageCenter({
               </div>
             )}
           </div>
+        </CardContent>
+
+        {/* Mobile Layout - Switchable Views */}
+        <CardContent className="flex-1 p-0 overflow-hidden md:hidden">
+          {showConversationList ? (
+            /* Mobile Conversation List */
+            <div className="flex flex-col h-full">
+              <div className="p-4 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search conversations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <ScrollArea className="flex-1">
+                {conversationsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8 px-4">
+                    {searchTerm ? 'No conversations found' : 'No conversations yet'}
+                  </div>
+                ) : (
+                  <div className="space-y-1 p-2">
+                    {filteredConversations.map((conv) => (
+                      <div
+                        key={conv.projectId}
+                        onClick={() => handleSelectChat(conv)}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                          selectedChat?.projectId === conv.projectId ? 'bg-muted' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={conv.otherUserAvatar} />
+                            <AvatarFallback>
+                              {conv.otherUserName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-medium text-sm truncate">{conv.otherUserName}</h4>
+                              {conv.lastMessageTime && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(conv.lastMessageTime)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-1 truncate">{conv.projectTitle}</p>
+                            {conv.lastMessage && (
+                              <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                            )}
+                            {conv.unreadCount && conv.unreadCount > 0 && (
+                              <Badge variant="destructive" className="mt-1 text-xs">
+                                {conv.unreadCount}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          ) : (
+            /* Mobile Chat View */
+            <div className="flex flex-col h-full">
+              {selectedChat && (
+                <>
+                  <div className="p-4 border-b bg-primary/5 shrink-0 flex items-center gap-3">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handleBackToList}
+                      className="mr-2"
+                    >
+                      <X className="h-4 w-4 rotate-180" />
+                    </Button>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {selectedChat.otherUserName.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium">{selectedChat.otherUserName}</h3>
+                      <p className="text-sm text-muted-foreground">{selectedChat.projectTitle}</p>
+                    </div>
+                  </div>
+
+                  <ScrollArea className="flex-1 p-4">
+                    {messagesLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No messages yet. Start the conversation!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className="flex items-end gap-2 max-w-[80%]">
+                              {msg.senderId !== user?.id && (
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-xs">
+                                    {msg.senderName?.slice(0, 2).toUpperCase() || 'UN'}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                              <div
+                                className={`px-3 py-2 rounded-lg text-sm ${
+                                  msg.senderId === user?.id
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                }`}
+                              >
+                                <p>{msg.content}</p>
+                                <p className="text-xs opacity-70 mt-1">
+                                  {formatTime(msg.timestamp)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={scrollRef} />
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  <div className="p-4 border-t bg-background shrink-0">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSend();
+                      }}
+                      className="flex gap-2"
+                    >
+                      <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                        className="flex-1"
+                      />
+                      <Button 
+                        type="submit" 
+                        size="icon" 
+                        disabled={sendMessageMutation.isPending || !newMessage.trim()}
+                      >
+                        {sendMessageMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </form>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
