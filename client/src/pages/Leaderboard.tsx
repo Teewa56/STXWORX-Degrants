@@ -47,7 +47,8 @@ export default function Leaderboard() {
     queryKey: ['leaderboard', categoryFilter, timeFilter],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/leaderboard?category=${categoryFilter}&time=${timeFilter}`);
-      return response as LeaderboardUser[];
+      const data = await response.json();
+      return data;
     },
   });
 
@@ -56,15 +57,16 @@ export default function Leaderboard() {
     queryKey: ['x-integrations-all'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/x/all');
-      return response.data as XIntegration[];
+      const data = await response.json();
+      return data;
     },
   });
 
   // Combine leaderboard data with X integrations
-  const enrichedLeaderboard = leaderboardData?.map(user => ({
+  const enrichedLeaderboard = Array.isArray(leaderboardData) ? leaderboardData.map(user => ({
     ...user,
-    xIntegration: xIntegrations?.find(x => x.userId === user.id)
-  })) || [];
+    xIntegration: Array.isArray(xIntegrations) ? xIntegrations.find(x => x.userId === user.id) : undefined
+  })) : [];
 
   // Filter users
   const filteredUsers = enrichedLeaderboard.filter(user => {
