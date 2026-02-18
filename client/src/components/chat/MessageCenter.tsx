@@ -67,89 +67,26 @@ export default function MessageCenter({
   const [searchTerm, setSearchTerm] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Mock data for conversations - replace with actual API
+  // Fetch conversations from API
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
     queryKey: ['/api/chat/conversations'],
     queryFn: async () => {
-      try {
-        const res = await apiRequest('GET', '/api/chat/conversations');
-        const data = await res.json();
-        return data.data || [];
-      } catch (error) {
-        // Return mock data if API fails
-        return [
-          {
-            projectId: '1',
-            projectTitle: 'Website Redesign',
-            otherUserName: 'John Doe',
-            otherUserRole: 'freelancer',
-            lastMessage: 'Sure, I can start working on that tomorrow',
-            lastMessageTime: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            unreadCount: 2,
-            otherUserAvatar: undefined
-          },
-          {
-            projectId: '2',
-            projectTitle: 'Mobile App Development',
-            otherUserName: 'Jane Smith',
-            otherUserRole: 'freelancer',
-            lastMessage: 'The designs look great!',
-            lastMessageTime: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-            unreadCount: 0,
-            otherUserAvatar: undefined
-          },
-          {
-            projectId: '3',
-            projectTitle: 'Logo Design',
-            otherUserName: 'Mike Johnson',
-            otherUserRole: 'client',
-            lastMessage: 'Can you make the blue a bit darker?',
-            lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            unreadCount: 1,
-            otherUserAvatar: undefined
-          }
-        ];
-      }
+      const res = await apiRequest('GET', '/api/chat/conversations');
+      const data = await res.json();
+      return data.data || [];
     },
     enabled: isOpen,
     refetchInterval: isOpen ? 10000 : false,
   });
 
-  // Mock messages for selected chat
+  // Fetch messages for selected chat
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: [`/api/chat/messages/${selectedChat?.projectId}`],
     queryFn: async () => {
       if (!selectedChat) return [];
-      try {
-        const res = await apiRequest('GET', `/api/chat/messages/${selectedChat.projectId}?limit=100`);
-        const data = await res.json();
-        return data.data || [];
-      } catch (error) {
-        // Return mock data if API fails
-        return [
-          {
-            id: '1',
-            content: 'Hey! How\'s the project going?',
-            senderId: selectedChat.otherUserRole === 'freelancer' ? 'freelancer-id' : 'client-id',
-            senderName: selectedChat.otherUserName,
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString()
-          },
-          {
-            id: '2',
-            content: 'Going great! Just finished the design phase.',
-            senderId: user?.id || 'current-user',
-            senderName: 'You',
-            timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString()
-          },
-          {
-            id: '3',
-            content: selectedChat.lastMessage || 'That sounds good!',
-            senderId: selectedChat.otherUserRole === 'freelancer' ? 'freelancer-id' : 'client-id',
-            senderName: selectedChat.otherUserName,
-            timestamp: selectedChat.lastMessageTime || new Date().toISOString()
-          }
-        ];
-      }
+      const res = await apiRequest('GET', `/api/chat/messages/${selectedChat.projectId}?limit=100`);
+      const data = await res.json();
+      return data.data || [];
     },
     enabled: isOpen && !!selectedChat?.projectId,
     refetchInterval: isOpen && !!selectedChat?.projectId ? 3000 : false,
@@ -159,15 +96,10 @@ export default function MessageCenter({
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!selectedChat) throw new Error('No chat selected');
-      try {
-        await apiRequest('POST', '/api/chat/messages', {
-          projectId: selectedChat.projectId,
-          content,
-        });
-      } catch (error) {
-        // Mock successful send if API fails
-        console.log('Mock sending message:', content);
-      }
+      await apiRequest('POST', '/api/chat/messages', {
+        projectId: selectedChat.projectId,
+        content,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/chat/messages/${selectedChat?.projectId}`] });
