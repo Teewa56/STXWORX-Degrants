@@ -111,10 +111,10 @@ router.post("/new", async (req, res) => {
         res.status(201).json({ message: "Project created successfully", project });
     } catch (error: any) {
         console.error('❌ Error creating project:', error);
-        if (error.name === 'ZodError') {
+        if (error && error.name === 'ZodError' && error.errors) {
             return res.status(400).json({ error: "Validation error", details: error.errors });
         }
-        res.status(500).json({ message: "Failed to create project", error: error.message });
+        res.status(500).json({ message: "Failed to create project", error: error?.message || "Unknown error" });
     }
 });
 

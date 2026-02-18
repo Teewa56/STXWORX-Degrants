@@ -349,6 +349,50 @@ export default function ClientDashboard() {
                               </FormItem>
                             )}
                           />
+                          <FormField
+                            control={form.control}
+                            name="milestone3Title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Milestone 3 Title</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="milestone3Description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl><Input {...field} placeholder="Deliverable details" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="milestone4Title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Milestone 4 Title</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="milestone4Description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl><Input {...field} placeholder="Deliverable details" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
                       </div>
 
