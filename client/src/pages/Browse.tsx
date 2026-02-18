@@ -39,6 +39,7 @@ import { Loader2 } from "lucide-react";
 const applicationSchema = z.object({
   bidAmount: z.coerce.number().positive("Bid amount must be positive"),
   proposal: z.string().min(10, "Proposal must be at least 10 characters"),
+  freelancerAddress: z.string().min(1, "Wallet address is required"),
 });
 
 type ApplicationData = z.infer<typeof applicationSchema>;
@@ -198,6 +199,7 @@ function ProjectCard({ project, user }: { project: Project; user: any }) {
     defaultValues: {
       bidAmount: project.totalAmount,
       proposal: "",
+      freelancerAddress: user?.stxAddress || "",
     },
   });
 
@@ -289,6 +291,25 @@ function ProjectCard({ project, user }: { project: Project; user: any }) {
                         <FormLabel>Bid Amount (STX)</FormLabel>
                         <FormControl>
                           <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="freelancerAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Wallet Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Your STX wallet address"
+                            disabled
+                            className="bg-muted"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

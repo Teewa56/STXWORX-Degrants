@@ -188,7 +188,7 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   milestone4Amount: z.number().int("Milestone amount must be an integer (microstacks)").positive("Amount must be positive"),
   freelancerAddress: z.string().min(34, "Invalid Stacks address").max(50, "Invalid Stacks address").optional(),
   freelancerId: z.string().optional(),
-  clientAddress: z.string().min(34, "Invalid Stacks address").max(50, "Invalid Stacks address").optional(),
+  clientAddress: z.string().min(1, "Client address required").max(100, "Client address too long").optional(),
   tokenType: z.enum(["STX", "sBTC"]).default("STX"),
   description: z.string().optional(),
   category: z.string().optional(),
@@ -213,6 +213,7 @@ export const applications = pgTable("applications", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   projectId: varchar("project_id", { length: 36 }).references(() => projects.id).notNull(),
   freelancerId: varchar("freelancer_id", { length: 36 }).references(() => users.id).notNull(),
+  freelancerAddress: varchar("freelancer_address", { length: 50 }).notNull(),
   bidAmount: integer("bid_amount").notNull(),
   proposal: text("proposal").notNull(),
   status: text("status").default("PENDING").notNull(), // PENDING, ACCEPTED, REJECTED
@@ -223,6 +224,8 @@ export const insertApplicationSchema = createInsertSchema(applications).omit({
   id: true,
   createdAt: true,
   status: true,
+}).extend({
+  freelancerAddress: z.string().min(1, "Wallet address is required").max(50, "Invalid wallet address"),
 });
 
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;

@@ -110,7 +110,7 @@ router.post("/new", async (req, res) => {
         console.log('✅ Project created successfully:', project);
         res.status(201).json({ message: "Project created successfully", project });
     } catch (error: any) {
-        console.error('❌ Error creating project:', error);
+        console.error('❌ Error creating project:', error?.message || 'Unknown error');
         if (error && error.name === 'ZodError' && error.errors) {
             return res.status(400).json({ error: "Validation error", details: error.errors });
         }
@@ -121,11 +121,20 @@ router.post("/new", async (req, res) => {
 // Get applications for the authenticated freelancer
 router.get("/applied", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
+        console.log('🔍 Fetching applications for user:', {
+            userId: req.user?.userId,
+            role: req.user?.role,
+            authenticated: !!req.user
+        });
+        
         if (!req.user || req.user.role !== "freelancer") {
+            console.log('❌ Access denied - User:', req.user?.userId, 'Role:', req.user?.role);
             return res.status(403).json({ error: "Only freelancers can view their applications" });
         }
 
+        console.log('📋 Querying applications for freelancer:', req.user.userId);
         const applications = await storage.getApplicationsByFreelancer(req.user.userId);
+        console.log('📊 Found applications:', applications.length);
 
         // Enrich with project details
         const enrichedApplications = await Promise.all(applications.map(async (app) => {
@@ -136,9 +145,10 @@ router.get("/applied", authenticateToken, async (req: AuthenticatedRequest, res:
             };
         }));
 
+        console.log('✅ Sending enriched applications:', enrichedApplications.length);
         res.json(enrichedApplications);
     } catch (error) {
-        console.error("Error fetching freelancer applications:", error);
+        console.error("❌ Error fetching freelancer applications:", error);
         res.status(500).json({ error: "Failed to fetch applications" });
     }
 });

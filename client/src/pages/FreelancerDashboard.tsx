@@ -61,7 +61,7 @@ export default function FreelancerDashboard() {
   // 2. Fetch MY applications
   const { data: applications, isLoading: isLoadingApps } = useQuery<EnrichedApplication[]>({
     queryKey: ['/api/projects/applied'],
-    enabled: !!user
+    enabled: !!user && user.role === 'freelancer'
   });
 
   // Filter for ACTIVE gigs
@@ -211,10 +211,32 @@ export default function FreelancerDashboard() {
                 <TabsContent value="applications">
                   <div className="space-y-6">
                     <h2 className="text-xl font-semibold">Application Status</h2>
-                    {isLoadingApps ? <p>Loading applications...</p> : applications?.length === 0 ? (
+                    {isLoadingApps ? (
                       <Card>
                         <CardContent className="py-12 text-center text-muted-foreground">
-                          You haven't applied to any projects yet.
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4" />
+                          <p>Loading applications...</p>
+                        </CardContent>
+                      </Card>
+                    ) : applications?.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                          <Briefcase className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                          <h3 className="text-lg font-semibold mb-2">No Applications Yet</h3>
+                          <p className="text-sm mb-4">You haven't applied to any projects yet.</p>
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">
+                              💡 <strong>Tip:</strong> Browse available projects and submit proposals to get started.
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              🎯 <strong>Next Steps:</strong> 
+                            </p>
+                            <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1 ml-4">
+                              <li>Find projects that match your skills</li>
+                              <li>Write compelling proposals</li>
+                              <li>Track your application status</li>
+                            </ul>
+                          </div>
                         </CardContent>
                       </Card>
                     ) : (
@@ -306,20 +328,78 @@ export default function FreelancerDashboard() {
 }
 
 function ApplicationStatusCard({ application }: { application: EnrichedApplication }) {
-  // ...
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACCEPTED': return 'text-green-600';
+      case 'REJECTED': return 'text-red-600';
+      case 'PENDING': return 'text-yellow-600';
+      default: return 'text-blue-600';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'ACCEPTED': return '✅';
+      case 'REJECTED': return '❌';
+      case 'PENDING': return '⏳';
+      default: return '📋';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'ACCEPTED': return 'Application Accepted';
+      case 'REJECTED': return 'Application Rejected';
+      case 'PENDING': return 'Application Pending';
+      default: return 'Application Submitted';
+    }
+  };
+
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-all duration-300">
       <CardHeader className="py-4">
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
             <CardTitle className="text-lg">{application.project?.milestone1Title || "Untitled Project"}</CardTitle>
-            <CardDescription>Bid: {application.bidAmount} STX</CardDescription>
+            <CardDescription className="text-sm">
+              Bid: {application.bidAmount} STX • Status: <span className={`font-semibold ${getStatusColor(application.status)}`}>{getStatusText(application.status)}</span>
+            </CardDescription>
           </div>
-          <Badge variant={application.status === 'ACCEPTED' ? 'default' : application.status === 'REJECTED' ? 'destructive' : 'secondary'}>
-            {application.status}
+          <Badge variant={application.status === 'ACCEPTED' ? 'default' : application.status === 'REJECTED' ? 'destructive' : 'secondary'} className="ml-2">
+            {getStatusIcon(application.status)} {application.status}
           </Badge>
         </div>
       </CardHeader>
+      <CardContent className="pt-0">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+              <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm">Your Proposal</h4>
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
+                {application.proposal || "No proposal provided"}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm">Project Response</h4>
+              <p className="text-sm text-muted-foreground mt-1">
+                {application.status === 'PENDING' && "Awaiting client review..."}
+                {application.status === 'ACCEPTED' && "Congratulations! Your proposal was accepted."}
+                {application.status === 'REJECTED' && "This proposal was not selected."}
+                {application.status === 'COMPLETED' && "Project completed successfully!"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 }
