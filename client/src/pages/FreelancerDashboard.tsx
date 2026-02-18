@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/use-auth';
-import ChatWidget from '@/components/chat/ChatWidget';
+import ChatWidget from '@/components/chat/MessageCenter';
 import XIntegration from '@/components/XIntegration';
 
 // Helper function to get token decimals
@@ -291,11 +291,12 @@ export default function FreelancerDashboard() {
 
       {activeChat && (
         <ChatWidget
-          projectId={activeChat.projectId}
-          projectTitle={activeChat.projectTitle}
-          otherUserName={activeChat.otherUserName}
-          otherUserRole={activeChat.otherUserRole}
+          isOpen={true}
           onClose={() => setActiveChat(null)}
+          initialProjectId={activeChat.projectId}
+          initialProjectTitle={activeChat.projectTitle}
+          initialOtherUserName={activeChat.otherUserName}
+          initialOtherUserRole={activeChat.otherUserRole}
         />
       )}
 

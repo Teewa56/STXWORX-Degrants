@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
 import type { TokenType } from '@/components/TokenSelector';
-import ChatWidget from '@/components/chat/ChatWidget';
+import ChatWidget from '@/components/chat/MessageCenter';
 
 // Extended type for enriched applications
 type EnrichedApplication = Application & {
@@ -367,11 +367,12 @@ export default function ClientDashboard() {
       <Footer />
       {activeChat && (
         <ChatWidget
-          key={activeChat.projectId} // Force re-mount on project change
-          projectId={activeChat.projectId}
-          projectTitle={activeChat.projectTitle}
-          otherUserName={activeChat.otherUserName}
-          otherUserRole="freelancer"
+          isOpen={true}
+          onClose={() => setActiveChat(null)}
+          initialProjectId={activeChat.projectId}
+          initialProjectTitle={activeChat.projectTitle}
+          initialOtherUserName={activeChat.otherUserName}
+          initialOtherUserRole="freelancer"
         />
       )}
     </div>
