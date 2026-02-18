@@ -51,7 +51,8 @@ export default function AuthPage() {
             // Create a temporary user ID for X auth flow
             const tempUserId = 'temp-' + Date.now();
             const response = await apiRequest('GET', `/api/x/authorize?userId=${tempUserId}`);
-            window.location.href = response.url;
+            const data = await response.json();
+            window.location.href = data.url;
         } catch (error) {
             console.error('X login failed:', error);
         }

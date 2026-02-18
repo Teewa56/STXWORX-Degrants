@@ -37,7 +37,8 @@ export default function XIntegration() {
     mutationFn: async () => {
       setIsConnecting(true);
       const response = await apiRequest('GET', `/api/x/authorize?userId=${user?.id}`);
-      window.location.href = response.url;
+      const data = await response.json();
+      window.location.href = data.url;
     },
     onSuccess: () => {
       toast({
