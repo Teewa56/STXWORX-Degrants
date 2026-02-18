@@ -34,8 +34,6 @@ interface LeaderboardUser extends User {
   rank: number;
   xIntegration?: XIntegration;
   earningsThisMonth: number;
-  completedProjects: number;
-  reputationScore: number;
 }
 
 export default function Leaderboard() {
@@ -104,7 +102,7 @@ export default function Leaderboard() {
     verifiedUsers: enrichedLeaderboard.filter(u => u.xIntegration?.verified).length,
     totalEarnings: enrichedLeaderboard.reduce((sum, u) => sum + u.totalEarnings, 0),
     avgReputation: enrichedLeaderboard.length > 0 
-      ? Math.round(enrichedLeaderboard.reduce((sum, u) => sum + u.reputationScore, 0) / enrichedLeaderboard.length)
+      ? Math.round(enrichedLeaderboard.reduce((sum, u) => sum + u.reputation, 0) / enrichedLeaderboard.length)
       : 0,
   };
 
@@ -257,7 +255,7 @@ export default function Leaderboard() {
                           {user.xIntegration?.verified && (
                             <Twitter className="h-4 w-4 text-blue-500" />
                           )}
-                          {getReputationBadge(user.reputationScore)}
+                          {getReputationBadge(user.reputation)}
                         </div>
                         <div className="text-2xl font-bold">{user.totalEarnings.toLocaleString()} STX</div>
                         <p className="text-sm text-muted-foreground">Total Earnings</p>
@@ -267,7 +265,7 @@ export default function Leaderboard() {
                             <div className="text-muted-foreground">Projects</div>
                           </div>
                           <div>
-                            <div className="font-medium">{user.reputationScore}</div>
+                            <div className="font-medium">{user.reputation}</div>
                             <div className="text-muted-foreground">Reputation</div>
                           </div>
                         </div>
@@ -322,7 +320,7 @@ export default function Leaderboard() {
                               {user.xIntegration?.verified && (
                                 <Twitter className="h-4 w-4 text-blue-500" />
                               )}
-                              {getReputationBadge(user.reputationScore)}
+                              {getReputationBadge(user.reputation)}
                             </div>
                             <p className="text-sm text-muted-foreground">@{user.username}</p>
                             {user.bio && (
@@ -341,7 +339,7 @@ export default function Leaderboard() {
                             <div className="text-sm text-muted-foreground">Projects</div>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium">{user.reputationScore}</div>
+                            <div className="font-medium">{user.reputation}</div>
                             <div className="text-sm text-muted-foreground">Reputation</div>
                           </div>
                         </div>
